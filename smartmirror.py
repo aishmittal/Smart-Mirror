@@ -1,8 +1,12 @@
-# smartmirror.py
-# requirements
-# requests, feedparser, traceback, Pillow
+import sys
+from PyQt4.QtCore import QSize, Qt
+import PyQt4.QtCore as QtCore 
+from PyQt4.QtGui import *
+from PyQt4.QtWebKit import *
 
-from Tkinter import *
+ 
+# Create an PyQT4 application object.
+
 import locale
 import threading
 import time
@@ -16,6 +20,8 @@ from contextlib import contextmanager
 
 LOCALE_LOCK = threading.Lock()
 
+window_width = 540
+window_height = 960
 ip = '<IP>'
 ui_locale = '' # e.g. 'fr_FR' fro French, '' as default
 time_format = 12 # 12 or 24
@@ -26,10 +32,10 @@ weather_lang = 'en' # see https://darksky.net/dev/docs/forecast for full list of
 weather_unit = 'us' # see https://darksky.net/dev/docs/forecast for full list of unit parameters values
 latitude = None # Set this if IP location lookup does not work for you (must be a string)
 longitude = None # Set this if IP location lookup does not work for you (must be a string)
-xlarge_text_size = 94
-large_text_size = 48
-medium_text_size = 28
-small_text_size = 18
+xlarge_text_size = 48
+large_text_size = 28
+medium_text_size = 18
+small_text_size = 10
 
 @contextmanager
 def setlocale(name): #thread proof function to work with locale
@@ -59,21 +65,35 @@ icon_lookup = {
 }
 
 
-class Clock(Frame):
+class Clock(QFrame):
     def __init__(self, parent, *args, **kwargs):
-        Frame.__init__(self, parent, bg='black')
+        super(Clock, self).__init__()
         # initialize time label
+        self.initUI()
+
+    def initUI(self):    
+        self.vbox = QVBoxLayout()
+        font1 = QFont('Helvetica', large_text_size)
+        font2 = QFont('Helvetica', small_text_size)
         self.time1 = ''
-        self.timeLbl = Label(self, font=('Helvetica', large_text_size), fg="white", bg="black")
-        self.timeLbl.pack(side=TOP, anchor=E)
+        self.timeLbl = QLabel('')
+        self.timeLbl.setAlignment(Qt.AlignRight)
+        self.timeLbl.setFont(font1)
+        
         # initialize day of week
         self.day_of_week1 = ''
-        self.dayOWLbl = Label(self, text=self.day_of_week1, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.dayOWLbl.pack(side=TOP, anchor=E)
+        self.dayOWLbl = QLabel('')
+        self.dayOWLbl.setAlignment(Qt.AlignRight)
+        
         # initialize date label
         self.date1 = ''
-        self.dateLbl = Label(self, text=self.date1, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.dateLbl.pack(side=TOP, anchor=E)
+        self.dateLbl = QLabel('')
+        self.dateLbl.setAlignment(Qt.AlignRight)
+
+        self.vbox.addWidget(self.timeLbl)
+        self.vbox.addWidget(self.dayOWLbl)
+        self.vbox.addWidget(self.dateLbl)
+        self.setLayout(self.vbox)
         self.tick()
 
     def tick(self):
@@ -88,244 +108,110 @@ class Clock(Frame):
             # if time string has changed, update it
             if time2 != self.time1:
                 self.time1 = time2
-                self.timeLbl.config(text=time2)
+                self.timeLbl.setText(time2)
             if day_of_week2 != self.day_of_week1:
                 self.day_of_week1 = day_of_week2
-                self.dayOWLbl.config(text=day_of_week2)
+                self.dayOWLbl.setText(day_of_week2)
             if date2 != self.date1:
                 self.date1 = date2
-                self.dateLbl.config(text=date2)
+                self.dateLbl.setText(date2)
             # calls itself every 200 milliseconds
             # to update the time display as needed
             # could use >200 ms, but display gets jerky
-            self.timeLbl.after(200, self.tick)
+            self.timer = QtCore.QTimer(self)
+            self.timer.timeout.connect(self.tick)
+            self.timer.start(1000)
 
 
-class Weather(Frame):
-    def __init__(self, parent, *args, **kwargs):
-        Frame.__init__(self, parent, bg='black')
-        self.temperature = ''
-        self.forecast = ''
-        self.location = ''
-        self.currently = ''
-        self.icon = ''
-        self.degreeFrm = Frame(self, bg="black")
-        self.degreeFrm.pack(side=TOP, anchor=W)
-        self.temperatureLbl = Label(self.degreeFrm, font=('Helvetica', xlarge_text_size), fg="white", bg="black")
-        self.temperatureLbl.pack(side=LEFT, anchor=N)
-        self.iconLbl = Label(self.degreeFrm, bg="black")
-        self.iconLbl.pack(side=LEFT, anchor=N, padx=20)
-        self.currentlyLbl = Label(self, font=('Helvetica', medium_text_size), fg="white", bg="black")
-        self.currentlyLbl.pack(side=TOP, anchor=W)
-        self.forecastLbl = Label(self, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.forecastLbl.pack(side=TOP, anchor=W)
-        self.locationLbl = Label(self, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.locationLbl.pack(side=TOP, anchor=W)
-        self.get_weather()
-
-    def get_ip(self):
-        try:
-            ip_url = "http://jsonip.com/"
-            req = requests.get(ip_url)
-            ip_json = json.loads(req.text)
-            return ip_json['ip']
-        except Exception as e:
-            traceback.print_exc()
-            return "Error: %s. Cannot get ip." % e
-
-    def get_weather(self):
-        try:
-
-            if latitude is None and longitude is None:
-                # get location
-                location_req_url = "http://freegeoip.net/json/%s" % self.get_ip()
-                r = requests.get(location_req_url)
-                location_obj = json.loads(r.text)
-
-                lat = location_obj['latitude']
-                lon = location_obj['longitude']
-
-                location2 = "%s, %s" % (location_obj['city'], location_obj['region_code'])
-
-                # get weather
-                weather_req_url = "https://api.darksky.net/forecast/%s/%s,%s?lang=%s&units=%s" % (weather_api_token, lat,lon,weather_lang,weather_unit)
-            else:
-                location2 = ""
-                # get weather
-                weather_req_url = "https://api.darksky.net/forecast/%s/%s,%s?lang=%s&units=%s" % (weather_api_token, latitude, longitude, weather_lang, weather_unit)
-
-            r = requests.get(weather_req_url)
-            weather_obj = json.loads(r.text)
-
-            degree_sign= u'\N{DEGREE SIGN}'
-            temperature2 = "%s%s" % (str(int(weather_obj['currently']['temperature'])), degree_sign)
-            currently2 = weather_obj['currently']['summary']
-            forecast2 = weather_obj["hourly"]["summary"]
-
-            icon_id = weather_obj['currently']['icon']
-            icon2 = None
-
-            if icon_id in icon_lookup:
-                icon2 = icon_lookup[icon_id]
-
-            if icon2 is not None:
-                if self.icon != icon2:
-                    self.icon = icon2
-                    image = Image.open(icon2)
-                    image = image.resize((100, 100), Image.ANTIALIAS)
-                    image = image.convert('RGB')
-                    photo = ImageTk.PhotoImage(image)
-
-                    self.iconLbl.config(image=photo)
-                    self.iconLbl.image = photo
-            else:
-                # remove image
-                self.iconLbl.config(image='')
-
-            if self.currently != currently2:
-                self.currently = currently2
-                self.currentlyLbl.config(text=currently2)
-            if self.forecast != forecast2:
-                self.forecast = forecast2
-                self.forecastLbl.config(text=forecast2)
-            if self.temperature != temperature2:
-                self.temperature = temperature2
-                self.temperatureLbl.config(text=temperature2)
-            if self.location != location2:
-                if location2 == ", ":
-                    self.location = "Cannot Pinpoint Location"
-                    self.locationLbl.config(text="Cannot Pinpoint Location")
-                else:
-                    self.location = location2
-                    self.locationLbl.config(text=location2)
-        except Exception as e:
-            traceback.print_exc()
-            print "Error: %s. Cannot get weather." % e
-
-        self.after(600000, self.get_weather)
-
-    @staticmethod
-    def convert_kelvin_to_fahrenheit(kelvin_temp):
-        return 1.8 * (kelvin_temp - 273) + 32
-
-
-class News(Frame):
-    def __init__(self, parent, *args, **kwargs):
-        Frame.__init__(self, parent, *args, **kwargs)
-        self.config(bg='black')
-        self.title = 'News' # 'News' is more internationally generic
-        self.newsLbl = Label(self, text=self.title, font=('Helvetica', medium_text_size), fg="white", bg="black")
-        self.newsLbl.pack(side=TOP, anchor=W)
-        self.headlinesContainer = Frame(self, bg="black")
-        self.headlinesContainer.pack(side=TOP)
-        self.get_headlines()
-
-    def get_headlines(self):
-        try:
-            # remove all children
-            for widget in self.headlinesContainer.winfo_children():
-                widget.destroy()
-            if news_country_code == None:
-                headlines_url = "https://news.google.com/news?ned=us&output=rss"
-            else:
-                headlines_url = "https://news.google.com/news?ned=%s&output=rss" % news_country_code
-
-            feed = feedparser.parse(headlines_url)
-
-            for post in feed.entries[0:5]:
-                headline = NewsHeadline(self.headlinesContainer, post.title)
-                headline.pack(side=TOP, anchor=W)
-        except Exception as e:
-            traceback.print_exc()
-            print "Error: %s. Cannot get news." % e
-
-        self.after(600000, self.get_headlines)
-
-
-class NewsHeadline(Frame):
-    def __init__(self, parent, event_name=""):
-        Frame.__init__(self, parent, bg='black')
-
-        image = Image.open("assets/Newspaper.png")
-        image = image.resize((25, 25), Image.ANTIALIAS)
-        image = image.convert('RGB')
-        photo = ImageTk.PhotoImage(image)
-
-        self.iconLbl = Label(self, bg='black', image=photo)
-        self.iconLbl.image = photo
-        self.iconLbl.pack(side=LEFT, anchor=N)
-
-        self.eventName = event_name
-        self.eventNameLbl = Label(self, text=self.eventName, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.eventNameLbl.pack(side=LEFT, anchor=N)
-
-
-class Calendar(Frame):
-    def __init__(self, parent, *args, **kwargs):
-        Frame.__init__(self, parent, bg='black')
-        self.title = 'Calendar Events'
-        self.calendarLbl = Label(self, text=self.title, font=('Helvetica', medium_text_size), fg="white", bg="black")
-        self.calendarLbl.pack(side=TOP, anchor=E)
-        self.calendarEventContainer = Frame(self, bg='black')
-        self.calendarEventContainer.pack(side=TOP, anchor=E)
-        self.get_events()
-
-    def get_events(self):
-        #TODO: implement this method
-        # reference https://developers.google.com/google-apps/calendar/quickstart/python
-
-        # remove all children
-        for widget in self.calendarEventContainer.winfo_children():
-            widget.destroy()
-
-        calendar_event = CalendarEvent(self.calendarEventContainer)
-        calendar_event.pack(side=TOP, anchor=E)
-        pass
-
-
-class CalendarEvent(Frame):
-    def __init__(self, parent, event_name="Event 1"):
-        Frame.__init__(self, parent, bg='black')
-        self.eventName = event_name
-        self.eventNameLbl = Label(self, text=self.eventName, font=('Helvetica', small_text_size), fg="white", bg="black")
-        self.eventNameLbl.pack(side=TOP, anchor=E)
 
 
 class FullscreenWindow:
 
     def __init__(self):
-        self.tk = Tk()
-        self.tk.configure(background='black')
-        self.topFrame = Frame(self.tk, background = 'black')
-        self.bottomFrame = Frame(self.tk, background = 'black')
-        self.topFrame.pack(side = TOP, fill=BOTH, expand = YES)
-        self.bottomFrame.pack(side = BOTTOM, fill=BOTH, expand = YES)
-        self.state = False
-        self.tk.bind("<Return>", self.toggle_fullscreen)
-        self.tk.bind("<Escape>", self.end_fullscreen)
-        # clock
-        self.clock = Clock(self.topFrame)
-        self.clock.pack(side=RIGHT, anchor=N, padx=100, pady=60)
-        # weather
-        self.weather = Weather(self.topFrame)
-        self.weather.pack(side=LEFT, anchor=N, padx=100, pady=60)
-        # news
-        self.news = News(self.bottomFrame)
-        self.news.pack(side=LEFT, anchor=S, padx=100, pady=60)
-        # calender - removing for now
-        # self.calender = Calendar(self.bottomFrame)
-        # self.calender.pack(side = RIGHT, anchor=S, padx=100, pady=60)
+		
+		self.qt = QWidget()
+		self.qt.resize(window_width, window_height)
+		self.pal=QPalette()
+		self.pal.setColor(QPalette.Background,Qt.black)
+		self.pal.setColor(QPalette.Foreground,Qt.white)
+		self.qt.setPalette(self.pal)
+		# for wheather and clock 
+		self.qt.hbox1 = QHBoxLayout()
+		self.qt.Clockframe = QFrame()
+		self.qt.Clockframe.setStyleSheet("background-color: black")
+		self.qt.Clockframe.setStyleSheet("color: white")
+		self.clock = Clock(self.qt.Clockframe)
+		
+		self.qt.hbox1.addStretch(1)
+		self.qt.hbox1.addWidget(self.clock)
 
-    def toggle_fullscreen(self, event=None):
-        self.state = not self.state  # Just toggling the boolean
-        self.tk.attributes("-fullscreen", self.state)
-        return "break"
+		# for stocks
+		self.qt.hbox2 = QHBoxLayout()
+		self.qt.Stocksframe = QFrame()
+		self.qt.Stocksframe.setStyleSheet("background-color: red")
+		#self.qt.hbox2.addStretch(1)
+		self.qt.hbox2.addWidget(self.qt.Stocksframe)
 
-    def end_fullscreen(self, event=None):
-        self.state = False
-        self.tk.attributes("-fullscreen", False)
-        return "break"
+		# for calender event
+		self.qt.hbox3 = QHBoxLayout()
+		self.qt.Eventframe = QFrame()
+		self.qt.Eventframe.setStyleSheet("background-color: green")
+		self.qt.hbox3.addWidget(self.qt.Eventframe)
+
+		self.qt.hbox4 = QHBoxLayout() # dynamic area
+		self.qt.Dynamicframe = QFrame()
+		self.qt.Dynamicframe.setStyleSheet("background-color: white")
+		self.qt.hbox4.addWidget(self.qt.Dynamicframe)
+
+		# messages voice commands
+		self.qt.hbox5 = QHBoxLayout() 
+		self.qt.Messageframe = QFrame()
+		self.qt.Messageframe.setStyleSheet("background-color: yellow")
+		self.qt.hbox5.addWidget(self.qt.Messageframe)
+
+		 # quotes
+		self.qt.hbox6 = QHBoxLayout()
+		self.qt.Quotesframe = QFrame()
+		self.qt.Quotesframe.setStyleSheet("background-color: orange")
+		self.qt.hbox6.addWidget(self.qt.Quotesframe)
+
+		self.qt.vbox  =	QVBoxLayout()
+		self.qt.vbox.addLayout(self.qt.hbox1)
+		self.qt.vbox.addLayout(self.qt.hbox2)
+		self.qt.vbox.addLayout(self.qt.hbox3)
+		self.qt.vbox.addLayout(self.qt.hbox4)
+		self.qt.vbox.addLayout(self.qt.hbox5)
+		self.qt.vbox.addLayout(self.qt.hbox6)
+
+		self.qt.setLayout(self.qt.vbox)
+		self.qt.show()
+
+"""
+
+self.topFrame = Frame(self.tk, background = 'black')
+self.middleFrame = Frame(self.tk, background = 'black')
+self.bottomFrame = Frame(self.tk, background = 'black')
+self.topFrame.pack(side = TOP, fill=BOTH, expand = YES)
+self.middleFrame.pack(side = TOP, fill=BOTH, expand = YES)
+self.bottomFrame.pack(side = BOTTOM, fill=BOTH, expand = YES)
+self.state = False
+self.tk.bind("<Return>", self.toggle_fullscreen)
+self.tk.bind("<Escape>", self.end_fullscreen)
+# clock
+self.clock = Clock(self.topFrame)
+self.clock.pack(side=RIGHT, anchor=N, padx=100, pady=60)
+# weather
+self.weather = Weather(self.topFrame)
+self.weather.pack(side=LEFT, anchor=N, padx=100, pady=60)
+# news
+self.news = News(self.bottomFrame)
+self.news.pack(side=LEFT, anchor=S, padx=20, pady=60)
+calender - removing for now
+self.calender = Calendar(self.bottomFrame)
+self.calender.pack(side = RIGHT, anchor=S, padx=100, pady=60)
+"""
 
 if __name__ == '__main__':
-    w = FullscreenWindow()
-    w.tk.mainloop()
+	a = QApplication(sys.argv)
+	w = FullscreenWindow()
+	sys.exit(a.exec_())

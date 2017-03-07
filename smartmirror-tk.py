@@ -26,10 +26,10 @@ weather_lang = 'en' # see https://darksky.net/dev/docs/forecast for full list of
 weather_unit = 'us' # see https://darksky.net/dev/docs/forecast for full list of unit parameters values
 latitude = None # Set this if IP location lookup does not work for you (must be a string)
 longitude = None # Set this if IP location lookup does not work for you (must be a string)
-xlarge_text_size = 94
-large_text_size = 48
-medium_text_size = 28
-small_text_size = 18
+xlarge_text_size = 48
+large_text_size = 28
+medium_text_size = 18
+small_text_size = 10
 
 @contextmanager
 def setlocale(name): #thread proof function to work with locale
@@ -295,10 +295,13 @@ class FullscreenWindow:
 
     def __init__(self):
         self.tk = Tk()
+        self.tk.geometry('540x960')
         self.tk.configure(background='black')
         self.topFrame = Frame(self.tk, background = 'black')
+        self.middleFrame = Frame(self.tk, background = 'black')
         self.bottomFrame = Frame(self.tk, background = 'black')
         self.topFrame.pack(side = TOP, fill=BOTH, expand = YES)
+        self.middleFrame.pack(side = TOP, fill=BOTH, expand = YES)
         self.bottomFrame.pack(side = BOTTOM, fill=BOTH, expand = YES)
         self.state = False
         self.tk.bind("<Return>", self.toggle_fullscreen)
@@ -311,7 +314,7 @@ class FullscreenWindow:
         self.weather.pack(side=LEFT, anchor=N, padx=100, pady=60)
         # news
         self.news = News(self.bottomFrame)
-        self.news.pack(side=LEFT, anchor=S, padx=100, pady=60)
+        self.news.pack(side=LEFT, anchor=S, padx=20, pady=60)
         # calender - removing for now
         # self.calender = Calendar(self.bottomFrame)
         # self.calender.pack(side = RIGHT, anchor=S, padx=100, pady=60)
