@@ -1,11 +1,11 @@
 import sys
+import os
+import cv2
+
 from PyQt4.QtCore import QSize, Qt
 import PyQt4.QtCore as QtCore 
 from PyQt4.QtGui import *
 from PyQt4.QtWebKit import *
-
- 
-# Create an PyQT4 application object.
 
 import locale
 import threading
@@ -20,8 +20,11 @@ from contextlib import contextmanager
 
 LOCALE_LOCK = threading.Lock()
 
+
 window_width = 540
 window_height = 960
+window_x = 400
+window_y = 150
 ip = '<IP>'
 ui_locale = '' # e.g. 'fr_FR' fro French, '' as default
 time_format = 12 # 12 or 24
@@ -36,6 +39,8 @@ xlarge_text_size = 48
 large_text_size = 28
 medium_text_size = 18
 small_text_size = 10
+
+
 
 @contextmanager
 def setlocale(name): #thread proof function to work with locale
@@ -63,6 +68,7 @@ icon_lookup = {
     'tornado': "assests/Tornado.png",    # tornado
     'hail': "assests/Hail.png"  # hail
 }
+
 
 
 class Clock(QFrame):
@@ -120,7 +126,7 @@ class Clock(QFrame):
             # could use >200 ms, but display gets jerky
             self.timer = QtCore.QTimer(self)
             self.timer.timeout.connect(self.tick)
-            self.timer.start(1000)
+            self.timer.start(5000)
 
 
 
@@ -128,7 +134,6 @@ class Clock(QFrame):
 class FullscreenWindow:
 
     def __init__(self):
-		
 		self.qt = QWidget()
 		self.qt.resize(window_width, window_height)
 		self.pal=QPalette()
@@ -138,50 +143,52 @@ class FullscreenWindow:
 		# for wheather and clock 
 		self.qt.hbox1 = QHBoxLayout()
 		self.qt.Clockframe = QFrame()
-		self.qt.Clockframe.setStyleSheet("background-color: black")
-		self.qt.Clockframe.setStyleSheet("color: white")
 		self.clock = Clock(self.qt.Clockframe)
 		
+
 		self.qt.hbox1.addStretch(1)
 		self.qt.hbox1.addWidget(self.clock)
 
 		# for stocks
 		self.qt.hbox2 = QHBoxLayout()
 		self.qt.Stocksframe = QFrame()
-		self.qt.Stocksframe.setStyleSheet("background-color: red")
+		self.qt.Stocksframe.setFrameShape(QFrame.StyledPanel)
 		#self.qt.hbox2.addStretch(1)
 		self.qt.hbox2.addWidget(self.qt.Stocksframe)
 
 		# for calender event
 		self.qt.hbox3 = QHBoxLayout()
 		self.qt.Eventframe = QFrame()
-		self.qt.Eventframe.setStyleSheet("background-color: green")
+		self.qt.Eventframe.setFrameShape(QFrame.StyledPanel)
 		self.qt.hbox3.addWidget(self.qt.Eventframe)
 
-		self.qt.hbox4 = QHBoxLayout() # dynamic area
-		self.qt.Dynamicframe = QFrame()
-		self.qt.Dynamicframe.setStyleSheet("background-color: white")
-		self.qt.hbox4.addWidget(self.qt.Dynamicframe)
+        # dynamic area
 
-		# messages voice commands
-		self.qt.hbox5 = QHBoxLayout() 
-		self.qt.Messageframe = QFrame()
-		self.qt.Messageframe.setStyleSheet("background-color: yellow")
-		self.qt.hbox5.addWidget(self.qt.Messageframe)
+        # self.qt.hbox4 = QHBoxLayout()
+        # self.qt.Dynamicframe = QFrame()
+        # self.qt.Dynamicframe.setFrameShape(QFrame.StyledPanel)
+        # self.qt.hbox4.addWidget(self.qt.Dynamicframe)
 
-		 # quotes
-		self.qt.hbox6 = QHBoxLayout()
-		self.qt.Quotesframe = QFrame()
-		self.qt.Quotesframe.setStyleSheet("background-color: orange")
-		self.qt.hbox6.addWidget(self.qt.Quotesframe)
+        # # message area
+        # self.qt.hbox5 = QHBoxLayout()
+        # self.qt.Messageframe = QFrame()
+        # self.qt.Messageframe.setFrameShape(QFrame.StyledPanel)
+        # self.qt.hbox5.addWidget(self.qt.Messageframe)
 
-		self.qt.vbox  =	QVBoxLayout()
+        # # quotes area
+        # self.qt.hbox6 = QHBoxLayout() 
+        # self.qt.Quotesframe = QFrame()
+        # self.qt.Quotesframe.setFrameShape(QFrame.StyledPanel)
+        # self.qt.hbox6.addWidget(self.qt.Quotesframe)
+
+
+		self.qt.vbox = QVBoxLayout()
 		self.qt.vbox.addLayout(self.qt.hbox1)
 		self.qt.vbox.addLayout(self.qt.hbox2)
 		self.qt.vbox.addLayout(self.qt.hbox3)
-		self.qt.vbox.addLayout(self.qt.hbox4)
-		self.qt.vbox.addLayout(self.qt.hbox5)
-		self.qt.vbox.addLayout(self.qt.hbox6)
+		# self.qt.vbox.addLayout(self.qt.hbox4)
+		# self.qt.vbox.addLayout(self.qt.hbox5)
+		# self.qt.vbox.addLayout(self.qt.hbox6)
 
 		self.qt.setLayout(self.qt.vbox)
 		self.qt.show()
