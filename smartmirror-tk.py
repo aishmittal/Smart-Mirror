@@ -171,6 +171,7 @@ class Weather(Frame):
             if icon2 is not None:
                 if self.icon != icon2:
                     self.icon = icon2
+                    
                     image = Image.open(icon2)
                     image = image.resize((100, 100), Image.ANTIALIAS)
                     image = image.convert('RGB')

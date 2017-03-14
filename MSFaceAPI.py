@@ -1,9 +1,12 @@
 import httplib, urllib, base64, json
+import configparser
+config = configparser.ConfigParser()
+config.read('cfg.ini')
 
 headers = {
     # Request headers
     'Content-Type': 'application/json',
-    'Ocp-Apim-Subscription-Key': 'c9dae5eec5e044cc8cdbe028f4a4d87d',
+    'Ocp-Apim-Subscription-Key': config['MSFACE']['api_key'],
 }
 
 personGroupId = 'users'
@@ -20,12 +23,10 @@ def face_detect(image_url):
         conn = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')
         conn.request("POST", "/face/v1.0/detect?%s" % params, body, headers)
         response = conn.getresponse()
-        print response.status, response.reason
         data = response.read()
-        print(data)
         conn.close()
         obj = json.loads(data)
-        print obj[0]['faceId']
+        #print obj[0]['faceId']
         return obj[0]['faceId']
     except Exception as e:
         print("Error: %s" % e.message)
@@ -50,6 +51,9 @@ def create_person_group():
         print("Error: %s" % e.message)
 
 
+
+
+
 def get_persons():
 
     try:
@@ -58,7 +62,7 @@ def get_persons():
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
-        print(data)
+        #print(data)
         persons=[]
         for row in data:
             persons.append({'name':row['name'],'personId':row['personId']})
@@ -68,6 +72,7 @@ def get_persons():
     except Exception as e:
         print("Error: %s" % e.message)
 
+
 def create_person(pname,udata):
     params = urllib.urlencode({
         'personGroupId' : personGroupId
@@ -76,11 +81,7 @@ def create_person(pname,udata):
     
     for row in persons:
         if pname == row['name']:
-            print 'Person already exist'
-            return row['personId']
-
-        
-    
+            return row['personId']    
     body = '{"name":"%s","userData":"%s"}' % (pname,udata)
     
     try:
@@ -89,11 +90,11 @@ def create_person(pname,udata):
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
-        print(data)
-        print('Person Created: %s'% pname)
-        print('Person Id: %s' % data['personId'])
         conn.close()
-        return data['personId']
+        if not data['personId']:
+            return ''
+        else:    
+            return data['personId']
     except Exception as e:
         print("Error: %s" % e.message)        
 
@@ -111,7 +112,6 @@ def add_person_face(personId,image_url):
         data = response.read()
         data = json.loads(data)
         #print data
-        print('Face Id %s' % data['persistedFaceId'])
         conn.close()
     except Exception as e:
         print(e)    
@@ -122,14 +122,13 @@ def face_identify(faceId):
 
     #faceIds_str='['+" ".join('"'+str(x)+'",' for x in faceIds)+']'
     body = '{ "personGroupId":"%s","faceIds":["%s"]}' % (personGroupId, faceId)
-    print body
+    #print body
     try:
         conn = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')
         conn.request("POST", "/face/v1.0/identify?" , body, headers)
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
-        print(data)
         pid=data[0]['candidates'][0]['personId']
         #print(pid)
         conn.close()
@@ -143,7 +142,6 @@ def train():
         conn.request("POST", "/face/v1.0/persongroups/%s/train?" % personGroupId, "", headers)
         response = conn.getresponse()
         data = response.read()
-        print(data)
         conn.close()
     except Exception as e:
         print("Error: %s" % e.message)           
