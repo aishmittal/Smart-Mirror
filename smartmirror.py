@@ -13,6 +13,7 @@ import time
 import requests
 import json
 import traceback
+import urllib2
 import feedparser
 
 from PIL import Image, ImageTk
@@ -45,6 +46,7 @@ dataset_path = os.path.join(base_path,'dataset')
 tmp_path = os.path.join(base_path,'tmp')
 cloudinary_dataset = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/dataset'
 cloudinary_tmp = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/tmp'
+google_map_api = 'AIzaSyCOW4YsV4gl7tAowsyPw_9ocO8iGTKD8A8'
 
 
 @contextmanager
@@ -342,6 +344,64 @@ class Events(QFrame):
         self.setLayout(self.vbox)
 
 
+
+class Maps(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(Maps, self).__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.style = "style=element:geometry%7Ccolor:0x1d2c4d&style=element:labels.text.fill%7Ccolor:0x8ec3b9&style=element:labels.text.stroke%7Ccolor:0x1a3646&style=feature:administrative.country%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0x64779e&style=feature:administrative.province%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:landscape.man_made%7Celement:geometry.stroke%7Ccolor:0x334e87&style=feature:landscape.natural%7Celement:geometry%7Ccolor:0x023e58&style=feature:poi%7Celement:geometry%7Ccolor:0x283d6a&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x6f9ba5&style=feature:poi%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:poi.park%7Celement:geometry.fill%7Ccolor:0x023e58&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x3C7680&style=feature:road%7Celement:geometry%7Ccolor:0x304a7d&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:road%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:road.highway%7Celement:geometry%7Ccolor:0x2c6675&style=feature:road.highway%7Celement:geometry.stroke%7Ccolor:0x255763&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0xb0d5ce&style=feature:road.highway%7Celement:labels.text.stroke%7Ccolor:0x023e58&style=feature:transit%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:transit%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:transit.line%7Celement:geometry.fill%7Ccolor:0x283d6a&style=feature:transit.station%7Celement:geometry%7Ccolor:0x3a4762&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x4e6d70"
+        self.size = "480x360"
+        self.zoom = 15
+        self.mapLbl=QLabel()
+        self.mapLbl.setAlignment(Qt.AlignCenter)
+        self.vbox = QVBoxLayout()
+        self.vbox.addWidget(self.mapLbl)
+        self.setLayout(self.vbox)
+        self.show_map()
+
+
+
+    def get_ip(self):
+        try:
+            ip_url = "http://jsonip.com/"
+            req = requests.get(ip_url)
+            ip_json = json.loads(req.text)
+            return ip_json['ip']
+        except Exception as e:
+            traceback.print_exc()
+            return "Error: %s. Cannot get ip." % e 
+                
+    def show_map(self):
+        if latitude is None and longitude is None:
+                # get location
+                location_req_url = "http://freegeoip.net/json/%s" % self.get_ip()
+                r = requests.get(location_req_url)
+                location_obj = json.loads(r.text)
+
+                lat = location_obj['latitude']
+                lon = location_obj['longitude']
+
+                location2 = "%s, %s" % (location_obj['city'], location_obj['region_code'])
+
+            
+                self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%d,%d&zoom=%d&format=jpg&maptype=roadmap&%s&size=%s" %(google_map_api,lat,lon,self.zoom,self.style,self.size)
+        
+        else:
+            location2 = ""
+            self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%d,%d&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,latitude,longitude,self.zoom,self.style,self.size)
+        
+
+        #print self.url  
+        req = urllib2.Request(self.url)
+        res = urllib2.urlopen(req)
+        data= res.read()
+
+        image = QImage()
+        image.loadFromData(data)      
+        self.mapLbl.setPixmap(QPixmap(image))        
+
     
 
 
@@ -384,21 +444,22 @@ class FullscreenWindow:
         #dynamic area
 
         self.qt.hbox4 = QHBoxLayout()
-        self.qt.Dynamicframe = QFrame()
-        self.qt.Dynamicframe.setFrameShape(QFrame.StyledPanel)
-        self.qt.hbox4.addWidget(self.qt.Dynamicframe)
+        self.qt.Dynamicframe = QWidget()
+        #self.qt.Dynamicframe.setFrameShape(QFrame.StyledPanel)
+        self.qt.map = Maps(self.qt.Dynamicframe)
+        self.qt.hbox4.addWidget(self.qt.map)
 
         # message area
-        self.qt.hbox5 = QHBoxLayout()
-        self.qt.Messageframe = QFrame()
-        self.qt.Messageframe.setFrameShape(QFrame.StyledPanel)
-        self.qt.hbox5.addWidget(self.qt.Messageframe)
+        # self.qt.hbox5 = QHBoxLayout()
+        # self.qt.Messageframe = QFrame()
+        # self.qt.Messageframe.setFrameShape(QFrame.StyledPanel)
+        # self.qt.hbox5.addWidget(self.qt.Messageframe)
 
         # quotes area
-        self.qt.hbox6 = QHBoxLayout()
-        self.qt.Quotesframe = QFrame()
-        self.qt.Quotesframe.setFrameShape(QFrame.StyledPanel)
-        self.qt.hbox6.addWidget(self.qt.Quotesframe)
+        # self.qt.hbox6 = QHBoxLayout()
+        # self.qt.Quotesframe = QFrame()
+        # self.qt.Quotesframe.setFrameShape(QFrame.StyledPanel)
+        # self.qt.hbox6.addWidget(self.qt.Quotesframe)
 
 
         self.qt.vbox = QVBoxLayout()
@@ -406,8 +467,8 @@ class FullscreenWindow:
         self.qt.vbox.addLayout(self.qt.hbox2)
         self.qt.vbox.addLayout(self.qt.hbox3)
         self.qt.vbox.addLayout(self.qt.hbox4)
-        self.qt.vbox.addLayout(self.qt.hbox5)
-        self.qt.vbox.addLayout(self.qt.hbox6)
+        # self.qt.vbox.addLayout(self.qt.hbox5)
+        # self.qt.vbox.addLayout(self.qt.hbox6)
 
         self.qt.setLayout(self.qt.vbox)
         self.qt.show()
