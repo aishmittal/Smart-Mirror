@@ -11,6 +11,7 @@ After clonning add following folders in root
 2.  cloudinary
 3.  pyaudio2
 4.  PyQt4
+5.  feedparser
 
 
 
