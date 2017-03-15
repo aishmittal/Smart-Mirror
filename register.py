@@ -17,7 +17,7 @@ import requests
 import json
 import traceback
 import feedparser
-import sqlite3
+import MySQLdb
 
 from PIL import Image, ImageTk
 from contextlib import contextmanager
@@ -57,8 +57,8 @@ user={
     'personid':''
 
 }
+conn = MySQLdb.connect("sql12.freesqldatabase.com","sql12163783","V1UcBAeFnq","sql12163783" )
 
-conn = sqlite3.connect('sm.db')
 TABLE_NAME="users"
 cursor = conn.cursor()
 
@@ -185,8 +185,8 @@ class SignUpForm(QFrame):
         user['dob']=str(self.dobEdt.date().toString('dd-MM-yyyy'))
         user['gender']=str(self.genderEdt.currentText())
         
-        sql_command = """SELECT * FROM users WHERE uname= ? """
-        cursor.execute(sql_command,(user['uname'],))
+        sql_command = """SELECT * FROM users WHERE uname = '%s' """ % (user['uname'])
+        cursor.execute(sql_command)
         
         if cursor.fetchone():
             self.messageLbl.setText('Error: Username already exist! try something new')
@@ -211,9 +211,9 @@ class SignUpForm(QFrame):
             print "PersonID = " + user['personid']
             
             format_str = """INSERT INTO users (id,uname,fname,lname,dob,email,gender,personid) 
-                     VALUES (NULL,?,?,?,?,?,?,?);"""
+                     VALUES (NULL,%s,%s,%s,%s,%s,%s,%s);"""
             params = (user['uname'], user['fname'], user['lname'],user['dob'],user['email'],user['gender'],user['personid'])         
-            conn.execute(format_str,params)
+            cursor.execute(format_str,params)
             self.messageLbl.setText('Success: User added to database sucessfully! Generate Face Dataset now')
             
             print "User added to database sucessfully!"

@@ -437,19 +437,6 @@ class Directions(QWidget):
         self.html = '''<iframe src="%s" height="%d" width="%d"></iframe>''' %(self.url,dynamic_frame_h,dynamic_frame_w)
         self.web_view.setHtml(self.html)
 
-class Calendar(QWidget):
-    def __init__(self, parent, *args, **kwargs):
-        super(Calendar, self).__init__()
-        self.initUI()
-
-    def initUI(self):
-        self.vbox = QVBoxLayout()
-        self.cal = QCalendarWidget()
-        self.cal.setGridVisible(True)
-        self.vbox.addWidget(self.cal)
-        self.setLayout(self.vbox) 
-
-
 
 
 class Message(QWidget):
@@ -480,7 +467,7 @@ class DynamicFrame(QWidget):
     def update_check(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_dynamic_frame)
-        self.timer.start(2000)
+        self.timer.start(10000)
 
 
     def update_dynamic_frame(self):
@@ -493,15 +480,7 @@ class DynamicFrame(QWidget):
                 
                 self.map = Maps(QWidget())
                 self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-                self.vbox.addWidget(self.map)            
-
-            if "calendar" in recognised_speech or "calender" in recognised_speech:
-                for i in reversed(range(self.vbox.count())): 
-                    self.vbox.itemAt(i).widget().setParent(None)
-                
-                self.cal = Calendar(QWidget())
-                self.cal.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-                self.vbox.addWidget(self.cal)
+                self.vbox.addWidget(self.map)
 
        
     
@@ -616,3 +595,4 @@ if __name__ == '__main__':
 
     while 1:
        pass  
+        
