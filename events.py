@@ -40,34 +40,15 @@ medium_text_size = 18
 small_text_size = 10
 
 base_path = os.path.dirname(os.path.realpath(__file__))
-dataset_path = os.path.join(base_path,'dataset')
+
+"""dataset_path = os.path.join(base_path,'dataset')
 tmp_path = os.path.join(base_path,'tmp')
 cloudinary_dataset = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/dataset'
 cloudinary_tmp = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/tmp'
 
 
 camera_port = 1
-user={
-    'uname':'',
-    'fname':'',
-    'lname':'',
-    'email':'',
-    'gender':'',
-    'dob':'',
-    'personid':''
-
-}
-
-
-stock={
-    'userid':'',
-    'username':'',
-    'code':'',
-    'name':'',
-    'stock_exchange':'',
-
-}
-
+"""
 
 event={
     'userid':'',
@@ -75,12 +56,14 @@ event={
     'title':'',
     'date':'',
     'time':'',
+#    'gender':'',
+#    'dob':'',
+#    'personid':''
 
 }
-
 conn = MySQLdb.connect("sql12.freesqldatabase.com","sql12163783","V1UcBAeFnq","sql12163783" )
 
-TABLE_NAME="users"
+TABLE_NAME="events"
 cursor = conn.cursor()
 
 def query(comm,params):
@@ -88,169 +71,12 @@ def query(comm,params):
     conn.commit()
     return cursor    
 
-new_user_added = False
-new_stock_added = False
 new_event_added = False
 
-class SignUpForm(QFrame):
+
+class CreateForm(QFrame):
     def __init__(self, parent, *args, **kwargs):
-        super(SignUpForm, self).__init__()
-        self.initUI()
-        self.verified = False
-
-
-    def initUI(self):
-
-        self.top = QFrame()
-        self.bottom = QFrame()
-        #self.top.setFrameShape(QFrame.StyledPanel)
-        self.top.setObjectName("gframe")
-        self.bottom.setObjectName("gframe")
-        #self.bottom.setFrameShape(QFrame.StyledPanel)
-        self.vbox = QVBoxLayout()
-        self.uname = ''
-        self.unameLbl = QLabel('User Name')
-        self.fnameLbl = QLabel('First Name')
-        self.lnameLbl = QLabel('Last Name')
-        self.emailLbl = QLabel('Email')
-        self.genderLbl = QLabel('Gender')
-        self.dobLbl = QLabel('DOB')
-
-        self.unameEdt = QLineEdit()
-        self.fnameEdt = QLineEdit()
-        self.lnameEdt = QLineEdit()
-        self.genderEdt = QComboBox()
-        self.dobEdt = QDateEdit()
-        self.dobEdt.setDisplayFormat('dd/MM/yyyy')
-        self.emailEdt = QLineEdit()
-        self.dobEdt.setCalendarPopup(True)
-        self.genderEdt.addItems(["Male", "Female","Other"])
-        self.unameEdt.textChanged.connect(self.__handleTextChanged)
-        self.fnameEdt.textChanged.connect(self.__handleTextChanged)
-        self.lnameEdt.textChanged.connect(self.__handleTextChanged)
-        self.dobEdt.dateChanged.connect(self.__handleTextChanged)
-        self.emailEdt.textChanged.connect(self.__handleTextChanged)
-        self.genderEdt.currentIndexChanged.connect(self.__handleTextChanged)
-        
-        self.fbox=QFormLayout()
-        self.fbox.setContentsMargins(100, 20, 100, 20)
-        self.fbox.setSpacing(10)
-        self.fbox.addRow(self.unameLbl,self.unameEdt)
-        self.fbox.addRow(self.fnameLbl,self.fnameEdt)
-        self.fbox.addRow(self.lnameLbl,self.lnameEdt)
-        self.fbox.addRow(self.dobLbl,self.dobEdt)
-        self.fbox.addRow(self.emailLbl,self.emailEdt)
-        self.fbox.addRow(self.genderLbl,self.genderEdt)
-        
-        font1 = QFont('Helvetica', small_text_size)
-        self.messageLbl = QLabel('')
-        self.messageLbl.setFont(font1)
-        self.verifyButton = QPushButton('Verify Data', self)
-        self.verifyButton.clicked.connect(self.verifyData)
-        self.createButton = QPushButton('Create User', self)
-        self.createButton.clicked.connect(self.createUser)
-        
-        self.vbox1 = QVBoxLayout()
-        self.hbox1 = QHBoxLayout() 
-        self.hbox = QHBoxLayout()
-        
-        self.hbox.setAlignment(Qt.AlignCenter)
-        self.hbox1.setAlignment(Qt.AlignCenter)
-        self.vbox1.setAlignment(Qt.AlignCenter)
-        
-        
-        self.hbox.addWidget(self.messageLbl)
-        self.hbox1.addStretch(2)
-        self.hbox1.addWidget(self.verifyButton)
-        self.hbox1.addStretch(1)
-        self.hbox1.addWidget(self.createButton)
-        self.hbox1.addStretch(2)
-        #self.hbox1.addWidget(self.nextButton)
-        self.vbox1.addLayout(self.hbox)
-        self.vbox1.addLayout(self.hbox1)
-        self.hbox1.setSpacing(10)
-        #self.vbox1.setContentsMargins(250, 10, 250, 20)
-
-        self.topvBox = QVBoxLayout()
-        self.topvBox.setAlignment(Qt.AlignCenter)
-        self.topvBox.addLayout(self.fbox)
-        self.top.setLayout(self.topvBox)
-        self.bottom.setLayout(self.vbox1)
-        
-        self.splitter1 = QSplitter(Qt.Vertical)
-        self.splitter1.addWidget(self.top)
-        self.splitter1.addWidget(self.bottom)
-        self.splitter1.setSizes([550,150])
-
-        self.vbox.addWidget(self.splitter1)
-        self.setLayout(self.vbox)
-
-
-
-    def __handleTextChanged(self, text):
-        self.verified = False
-
-    def verifyData(self):
-        self.verified=False
-        global new_user_added
-        new_user_added = False
-        if (not self.unameEdt.text()) or (not self.fnameEdt.text()) or (not self.lnameEdt.text()) or (not self.emailEdt.text()) :
-            self.messageLbl.setText('Error: One or more required fields empty! verification failed')
-            print 'One or more required fields empty ! fill them all'
-            print 'Verification failed'
-            return
-        user['uname']=str(self.unameEdt.text())
-        user['fname']=str(self.fnameEdt.text())
-        user['lname']=str(self.lnameEdt.text())
-        user['email']=str(self.emailEdt.text())
-        print user['email']
-        user['dob']=str(self.dobEdt.date().toString('dd-MM-yyyy'))
-        user['gender']=str(self.genderEdt.currentText())
-        
-        sql_command = """SELECT * FROM users WHERE uname = '%s' """ % (user['uname'])
-        cursor.execute(sql_command)
-        
-        if cursor.fetchone():
-            self.messageLbl.setText('Error: Username already exist! try something new')
-            print 'Username already exist'
-            print 'Verification failed'
-        else:
-            self.messageLbl.setText('Success: Verification Successful!')
-            print 'verification successful'
-            self.verified = True
-
-
-    def createUser(self):
-        if self.verified == True:
-            user['personid'] = msface.create_person(user['uname'],user['fname']+' '+ user['lname'])
-            
-            if not user['personid']:
-                self.messageLbl.setText('Error: Error while creating person! try again')
-                return
-
-            self.messageLbl.setText('Success: User created: %s!' % user['uname'])    
-            print "User created ... " + user['uname']
-            print "PersonID = " + user['personid']
-            
-            format_str = """INSERT INTO users (id,uname,fname,lname,dob,email,gender,personid) 
-                     VALUES (NULL,%s,%s,%s,%s,%s,%s,%s);"""
-            params = (user['uname'], user['fname'], user['lname'],user['dob'],user['email'],user['gender'],user['personid'])         
-            cursor.execute(format_str,params)
-            self.messageLbl.setText('Success: User added to database sucessfully! Generate Face Dataset now')
-            
-            print "User added to database sucessfully!"
-            conn.commit()
-            global new_user_added
-            new_user_added = True
-            
-        else:
-            self.messageLbl.setText('Warning: Verification not done! first verify')
-            print "Verification not done! first verify"
-
-
-class StocksForm(QFrame):
-    def __init__(self, parent, *args, **kwargs):
-        super(StocksForm, self).__init__()
+        super(CreateForm, self).__init__()
         self.initUI()
         self.verified = False
 
@@ -266,161 +92,9 @@ class StocksForm(QFrame):
         self.vbox = QVBoxLayout()
         #self.uname = ''
         self.usernameLbl = QLabel('Username')
-        self.codeLbl = QLabel('Stock Code')
-        self.nameLbl = QLabel('Stock Name')
-        self.stockexchangeLbl = QLabel('Stock Exchange')
-        #self.genderLbl = QLabel('Gender')
-        #self.dobLbl = QLabel('DOB')
-
-        self.usernameEdt = QLineEdit()
-        self.codeEdt = QLineEdit()
-        self.nameEdt = QLineEdit()
-        self.stockexchangeEdt = QLineEdit()
-        #self.dobEdt = QDateEdit()
-        #self.dobEdt.setDisplayFormat('dd/MM/yyyy')
-        #self.emailEdt = QLineEdit()
-        #self.dobEdt.setCalendarPopup(True)
-        #self.genderEdt.addItems(["Male", "Female","Other"])
-        #self.unameEdt.textChanged.connect(self.__handleTextChanged)
-        self.usernameEdt.textChanged.connect(self.__handleTextChanged)
-        self.codeEdt.textChanged.connect(self.__handleTextChanged)
-        self.nameEdt.textChanged.connect(self.__handleTextChanged)
-        self.stockexchangeEdt.textChanged.connect(self.__handleTextChanged)
-        #self.genderEdt.currentIndexChanged.connect(self.__handleTextChanged)
-        
-        self.fbox=QFormLayout()
-        self.fbox.setContentsMargins(100, 20, 100, 20)
-        self.fbox.setSpacing(10)
-        self.fbox.addRow(self.usernameLbl,self.usernameEdt)
-        self.fbox.addRow(self.codeLbl,self.codeEdt)
-        self.fbox.addRow(self.nameLbl,self.nameEdt)
-        self.fbox.addRow(self.stockexchangeLbl,self.stockexchangeEdt)
-        #self.fbox.addRow(self.emailLbl,self.emailEdt)
-        #self.fbox.addRow(self.genderLbl,self.genderEdt)
-        
-        font1 = QFont('Helvetica', small_text_size)
-        self.messageLbl = QLabel('')
-        self.messageLbl.setFont(font1)
-        self.verifyButton = QPushButton('Verify Data', self)
-        self.verifyButton.clicked.connect(self.verifyData)
-        self.createButton = QPushButton('Create Stock', self)
-        self.createButton.clicked.connect(self.createStock)
-        
-        self.vbox1 = QVBoxLayout()
-        self.hbox1 = QHBoxLayout() 
-        self.hbox = QHBoxLayout()
-        
-        self.hbox.setAlignment(Qt.AlignCenter)
-        self.hbox1.setAlignment(Qt.AlignCenter)
-        self.vbox1.setAlignment(Qt.AlignCenter)
-        
-        
-        self.hbox.addWidget(self.messageLbl)
-        self.hbox1.addStretch(2)
-        self.hbox1.addWidget(self.verifyButton)
-        self.hbox1.addStretch(1)
-        self.hbox1.addWidget(self.createButton)
-        self.hbox1.addStretch(2)
-        #self.hbox1.addWidget(self.nextButton)
-        self.vbox1.addLayout(self.hbox)
-        self.vbox1.addLayout(self.hbox1)
-        self.hbox1.setSpacing(10)
-        #self.vbox1.setContentsMargins(250, 10, 250, 20)
-
-        self.topvBox = QVBoxLayout()
-        self.topvBox.setAlignment(Qt.AlignCenter)
-        self.topvBox.addLayout(self.fbox)
-        self.top.setLayout(self.topvBox)
-        self.bottom.setLayout(self.vbox1)
-        
-        self.splitter1 = QSplitter(Qt.Vertical)
-        self.splitter1.addWidget(self.top)
-        self.splitter1.addWidget(self.bottom)
-        self.splitter1.setSizes([550,150])
-
-        self.vbox.addWidget(self.splitter1)
-        self.setLayout(self.vbox)
-
-
-
-    def __handleTextChanged(self, text):
-        self.verified = False
-
-    def verifyData(self):
-        self.verified=False
-        global new_stock_added
-        new_stock_added = False
-        if (not self.usernameEdt.text()) or (not self.codeEdt.text()) :
-            self.messageLbl.setText('Error: One or more required fields empty! verification failed')
-            print 'One or more required fields empty ! fill them all'
-            print 'Verification failed'
-            return
-        stock['username']=str(self.usernameEdt.text())
-        stock['code']=str(self.codeEdt.text())
-        stock['name']=str(self.nameEdt.text())
-        stock['stock_exchange']=str(self.stockexchangeEdt.text())
-        #print user['email']
-        #user['dob']=str(self.dobEdt.date().toString('dd-MM-yyyy'))
-        #user['gender']=str(self.genderEdt.currentText())
-        
-        sql_command = """SELECT * FROM users WHERE uname = '%s' """ % (stock['username'])
-        cursor.execute(sql_command)
-        
-        if (not cursor.fetchone()):
-            self.messageLbl.setText('Error: The given username does not exist! Please register yourself...')
-            print 'User name does not exist'
-            print 'Verification failed'
-        else:
-            cursor.execute(sql_command)
-            stock['userid']=cursor.fetchone()[0]
-            self.messageLbl.setText('Success: Verification Successful!')
-            print 'verification successful'
-            self.verified = True
-
-
-    def createStock(self):
-        if self.verified == True:
-
-            self.messageLbl.setText('Success: Stock created: %s!' % stock['code'])    
-            print "Stock created ... " + stock['code']
-            print "Stock name = " + stock['name']
-            
-            format_str = """INSERT INTO stocks (id, userid, code, name, stock_exchange) 
-                     VALUES (NULL,%s,%s,%s,%s);"""
-            params = (stock['userid'], stock['code'], stock['name'], stock['stock_exchange'])         
-            cursor.execute(format_str,params)
-            self.messageLbl.setText('Success: Stock added to database sucessfully!')
-            
-            print "Stock added to database sucessfully!"
-            conn.commit()
-            global new_stock_added
-            new_stock_added = True
-            
-        else:
-            self.messageLbl.setText('Warning: Verification not done! first verify')
-            print "Verification not done! first verify"
-
-class EventsForm(QFrame):
-    def __init__(self, parent, *args, **kwargs):
-        super(EventsForm, self).__init__()
-        self.initUI()
-        self.verified = False
-
-
-    def initUI(self):
-
-        self.top = QFrame()
-        self.bottom = QFrame()
-        #self.top.setFrameShape(QFrame.StyledPanel)
-        self.top.setObjectName("gframe")
-        self.bottom.setObjectName("gframe")
-        #self.bottom.setFrameShape(QFrame.StyledPanel)
-        self.vbox = QVBoxLayout()
-        #self.uname = ''
-        self.usernameLbl = QLabel('Username')
-        self.titleLbl = QLabel('Event Title')
-        self.dateLbl = QLabel('Event Date')
-        self.timeLbl = QLabel('Event Time')
+        self.titleLbl = QLabel('Title')
+        self.dateLbl = QLabel('Date')
+        self.timeLbl = QLabel('Time')
         #self.genderLbl = QLabel('Gender')
         #self.dobLbl = QLabel('DOB')
 
@@ -554,7 +228,6 @@ class EventsForm(QFrame):
             print "Verification not done! first verify"
 
 
-
 class AddDetailsTab(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(AddDetailsTab, self).__init__()
@@ -562,44 +235,14 @@ class AddDetailsTab(QWidget):
 
     def initUI(self):
         self.hbox = QHBoxLayout()
-        self.SignUpFrame = QFrame()
-        self.SignUpForm = SignUpForm(self.SignUpFrame)
-        self.hbox.addWidget(self.SignUpForm)
-        self.vbox  = QVBoxLayout()
-        self.vbox.addLayout(self.hbox)
-        self.setLayout(self.vbox)
-
-
-
-class AddStocksTab(QWidget):
-    def __init__(self, parent, *args, **kwargs):
-        super(AddStocksTab, self).__init__()
-        self.initUI()
-
-    def initUI(self):
-        self.hbox = QHBoxLayout()
         self.CreateFrame = QFrame()
-        self.StocksForm = StocksForm(self.CreateFrame)
-        self.hbox.addWidget(self.StocksForm)
+        self.CreateForm = CreateForm(self.CreateFrame)
+        self.hbox.addWidget(self.CreateForm)
         self.vbox  = QVBoxLayout()
         self.vbox.addLayout(self.hbox)
         self.setLayout(self.vbox)
 
-class AddEventsTab(QWidget):
-    def __init__(self, parent, *args, **kwargs):
-        super(AddEventsTab, self).__init__()
-        self.initUI()
-
-    def initUI(self):
-        self.hbox = QHBoxLayout()
-        self.CreateFrame = QFrame()
-        self.EventsForm = EventsForm(self.CreateFrame)
-        self.hbox.addWidget(self.EventsForm)
-        self.vbox  = QVBoxLayout()
-        self.vbox.addLayout(self.hbox)
-        self.setLayout(self.vbox)
-
-
+"""
 class GenerateDatasetTab(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(GenerateDatasetTab, self).__init__()
@@ -615,8 +258,6 @@ class GenerateDatasetTab(QWidget):
         self.uploadCompleted = False
         self.trained = False
         self.initUI()
-
-
 
     def initUI(self):
         self.topleft = QFrame()        
@@ -871,6 +512,8 @@ class GenerateDatasetTab(QWidget):
             print('Training Completed...')
             self.messageLbl.setText('Success: Training Completed Successfully')
 
+"""
+
 class MainWindow:
 
     def __init__(self): 
@@ -883,24 +526,17 @@ class MainWindow:
     
         self.tab1 = QWidget()
         self.DetailsTab=AddDetailsTab(self.tab1)
-        self.qt.addTab(self.DetailsTab,"Create User")
-    
-        self.tab2 = QWidget()
-        self.DatasetTab=GenerateDatasetTab(self.tab2)
-        self.qt.addTab(self.DatasetTab,"Generate Face Dataset")
-
-        self.tab3 = QWidget()
-        self.StockTab=AddStocksTab(self.tab3)
-        self.qt.addTab(self.StockTab,"Add Stocks")
-
-        self.tab4 = QWidget()
-        self.EventsTab=AddEventsTab(self.tab3)
-        self.qt.addTab(self.EventsTab,"Create Event")
-
+        self.qt.addTab(self.DetailsTab,"Create Event")
         self.qt.show()
         self.qt.setStyleSheet("#gframe {border-radius:5px;border:1px solid #a5a5a5}")
+    
+        """
+        self.tab2 = QWidget()
+        self.DatasetTab=GenerateDatasetTab(self.tab2)
+        self.qt.addTab(self.DatasetTab,"Generate Face Dataset"),self.qt.show()
+        self.qt.setStyleSheet("#gframe {border-radius:5px;border:1px solid #a5a5a5}")
         
-
+        """
 
 if __name__ == '__main__':
     a = QApplication(sys.argv)

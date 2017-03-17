@@ -3,7 +3,7 @@ import os
 import cv2
 
 from PyQt4.QtCore import QSize, Qt
-import PyQt4.QtCore as QtCore
+from PyQt4.QtCore import *
 from PyQt4.QtGui import *
 from PyQt4.QtWebKit import *
 
@@ -14,18 +14,31 @@ import requests
 import json
 import traceback
 import urllib2
-#import feedparser
+import feedparser
+import thread
+import string
+import MySQLdb
+import random
+import datetime
 
-#from PIL import Image, ImageTk
+import pyaudio 
+import speech_recognition as sr
+import imageUpload as imup
+import MSFaceAPI as msface
+
+from PIL import Image, ImageTk
 from contextlib import contextmanager
+from googlefinance import getQuotes
 
 LOCALE_LOCK = threading.Lock()
 
-
+#540x960
 window_width = 540
 window_height = 960
 window_x = 400
 window_y = 150
+dynamic_frame_w = 500
+dynamic_frame_h = 400
 ip = '<IP>'
 ui_locale = '' # e.g. 'fr_FR' fro French, '' as default
 time_format = 12 # 12 or 24
@@ -44,10 +57,15 @@ small_text_size = 10
 base_path = os.path.dirname(os.path.realpath(__file__))
 dataset_path = os.path.join(base_path,'dataset')
 tmp_path = os.path.join(base_path,'tmp')
+
 cloudinary_dataset = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/dataset'
 cloudinary_tmp = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/tmp'
 google_map_api = 'AIzaSyCOW4YsV4gl7tAowsyPw_9ocO8iGTKD8A8'
 
+recognised_speech = ''
+current_userid = 1 
+today = datetime.datetime.now().strftime("%d-%m-%Y")
+current_userfname = ''
 
 @contextmanager
 def setlocale(name): #thread proof function to work with locale
@@ -80,15 +98,13 @@ font1 = QFont('Helvetica', small_text_size)
 font2 = QFont('Helvetica', medium_text_size)
 font3 = QFont('Helvetica', large_text_size) 
 
-def pil2qpixmap(pil_image):
-    w, h = pil_image.size
-    data = pil_image.tobytes("raw", "RGBX")
-    qimage = QImage(data, w, h, QImage.Format_RGB888)
-    qpixmap = QPixmap(w,h)
-    pix = QPixmap.fromImage(qimage)
-    return pix
+conn = MySQLdb.connect("sql12.freesqldatabase.com","sql12163783","V1UcBAeFnq","sql12163783" )
 
-class Weather(QFrame):
+TABLE_NAME="users"
+cursor = conn.cursor()
+
+
+class Weather(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(Weather, self).__init__()
         self.initUI()
@@ -136,7 +152,7 @@ class Weather(QFrame):
 
 
     def weather_update(self):
-        self.timer = QtCore.QTimer(self)
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.get_weather)
         self.timer.start(60000*60)
 
@@ -234,7 +250,7 @@ class Weather(QFrame):
         return 1.8 * (kelvin_temp - 273) + 32
 
 
-class Clock(QFrame):
+class Clock(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(Clock, self).__init__()
         self.initUI()
@@ -264,7 +280,7 @@ class Clock(QFrame):
         self.time_update()
 
     def time_update(self):
-        self.timer = QtCore.QTimer(self)
+        self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
         self.timer.start(200)
 
@@ -297,13 +313,12 @@ class Stocks(QFrame):
         self.initUI()
 
     def initUI(self):
-
+        
         self.heading = QLabel('Stock Market')
         self.heading.setAlignment(Qt.AlignCenter)
         self.heading.setFont(font2)
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.heading)
-
         self.fbox = QFormLayout()
         self.fbox.setSpacing(10)
         self.fbox.setAlignment(Qt.AlignLeft)
@@ -312,17 +327,32 @@ class Stocks(QFrame):
         self.stockLbl.setFont(font1)
         self.priceLbl.setFont(font1)
         self.fbox.addRow(self.stockLbl,self.priceLbl)
-        self.stockNames = ['SENSEX','NIFTY', 'IOC','ITC']
-        self.prices  = [20000,8000,5000,5000]
-        self.update_stocks()
+        self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
+
+	
+        if (current_userid != 0):
+
+            sql_command = " SELECT * from stocks where userid = %s " % current_userid 
+            cursor.execute(sql_command)
+            self.obj = cursor.fetchall()
+	    
+            self.stockNames = []
+	    for i,stock in enumerate(self.obj):
+                self.stockNames.append(stock[2])
+                
+            #print self.stocks
+
+
+	self.update_stocks()
                 
         self.vbox.addLayout(self.fbox)
         self.setLayout(self.vbox)
 
     def update_stocks(self):
         for i,stock in enumerate(self.stockNames):
-            stkLbl = QLabel(stock)
-            prcLbl = QLabel(str(self.prices[i]))
+            stkLbl = QLabel(str(stock))
+            data  = getQuotes(stock)
+            prcLbl = QLabel(data[0]['LastTradePrice'])
             stkLbl.setFont(font1)
             prcLbl.setFont(font1)
             self.fbox.addRow(stkLbl,prcLbl)
@@ -336,24 +366,164 @@ class Events(QFrame):
 
     def initUI(self):
 
-        self.heading = QLabel('Todays\'s Events')
+        self.heading = QLabel("Today's Events")
         self.heading.setAlignment(Qt.AlignCenter)
+        self.heading.setFont(font2)
 
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.heading)
+        self.fbox = QFormLayout()
+        self.fbox.setSpacing(10)
+        self.fbox.setAlignment(Qt.AlignLeft)
+        self.eventLbl = QLabel('Events')
+        self.timeLbl = QLabel('Time')
+        self.eventLbl.setFont(font1)
+        self.timeLbl.setFont(font1)
+        self.fbox.addRow(self.eventLbl,self.timeLbl)
+        self.eventNames = []
+
+        if (current_userid != 0):
+
+            sql_command = """ SELECT * from events where userid = %s  """ % current_userid
+            params = (current_userid)
+            cursor.execute(sql_command)
+            self.obj = cursor.fetchall()
+	    
+            self.eventNames = []
+            self.eventTime = []
+	    for i,event in enumerate(self.obj):
+                self.eventNames.append(event[2])
+                self.eventTime.append(event[4])
+ 
+	self.update_events()
+                
+        self.vbox.addLayout(self.fbox)
         self.setLayout(self.vbox)
+
+    def update_events(self):
+        for i,event in enumerate(self.eventNames):
+            eventLbl = QLabel(str(event))
+            #data  = getquotes(stock)
+            timeLbl = QLabel(str(self.eventTime[i]))
+            eventLbl.setFont(font1)
+            timeLbl.setFont(font1)
+            self.fbox.addRow(eventLbl, timeLbl)
+
+
+
+class news(QWidget):
+    def __init__(self, source=None):
+        super(news, self).__init__()
+        # source
+        if source:
+          self.source = source
+        else:
+          # self.source = 'the-times-of-india'      
+          self.source = 'the-telegraph'      
+      
+        self.initui()
+
+    def initui(self):
+        self.vbox = qvboxlayout()
+        self.heading = qlabel()
+        
+        self.size= "480x360"
+        
+        #self.source="the-times-of-india"
+        self.fbox = qformlayout()
+        self.fbox.setalignment(qt.alignleft)
+        self.fbox.setspacing(5)
+
+        self.heading.setalignment(qt.aligncenter)
+        self.heading.setfont(font2)
+
+        self.vbox.addwidget(self.heading)
+        self.vbox.addlayout(self.fbox)
+        
+        self.setlayout(self.vbox)
+        self.news_fetcher()
+        #self.addwidget(news)
+        
+
+    #updating news
+    def news_fetcher(self):
+        
+        try:
+            
+            news_req_url = "https://newsapi.org/v1/articles?source=%s&sortby=latest&apikey=15f23ada1b3d4740b80a2e4c16943993" % self.source
+            print news_req_url
+            r = requests.get(news_req_url)
+            news_obj = json.loads(r.text)
+            
+            print news_obj
+            
+            data0=news_obj["articles"][0]["title"]
+            data1=news_obj["articles"][1]["title"]
+            data2=news_obj["articles"][2]["title"]
+            data3=news_obj["articles"][3]["title"]
+            data4=news_obj["articles"][4]["title"]
+
+          
+            data_read = [data0,data1,data2,data3,data4]
+
+            print data_read
+            for i in reversed(range(self.fbox.count())): 
+                    self.fbox.itemat(i).widget().setparent(none)
+                
+            for x in data_read:
+                #india
+
+                if self.source == 'the-times-of-india':
+                    lbl = qlabel(x)
+                    lbl.setfont(font1)
+                    self.fbox.addrow(lbl)
+                    self.heading.settext('india')
+                    
+                # sports news
+                elif self.source == 'fox-sports':
+                    lbl = qlabel(x)
+                    self.fbox.addrow(lbl)
+                    self.heading.settext('sports')
+                    
+                # tech news
+                elif self.source == 'techcrunch':
+                    lbl = qlabel(x)
+                    self.fbox.addrow(lbl)
+                    self.heading.settext('technology')
+                   
+                #world
+                elif self.source == 'the-telegraph':
+                    lbl = qlabel(x)
+                    self.fbox.addrow(lbl)
+                    self.heading.settext('world')
+                   
+                # business
+                elif self.source == 'business-insider':
+                    lbl = qlabel(x)
+                    self.fbox.addrow(lbl)
+                    self.heading.settext('business')
+                    
+
+        except IOError:
+            print('no internet')
 
 
 
 class Maps(QWidget):
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, zoom=None):
         super(Maps, self).__init__()
+        
+        if zoom:
+            self.zoom = zoom
+        else:
+            self.zoom = 15
         self.initUI()
 
     def initUI(self):
         self.style = "style=element:geometry%7Ccolor:0x1d2c4d&style=element:labels.text.fill%7Ccolor:0x8ec3b9&style=element:labels.text.stroke%7Ccolor:0x1a3646&style=feature:administrative.country%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0x64779e&style=feature:administrative.province%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:landscape.man_made%7Celement:geometry.stroke%7Ccolor:0x334e87&style=feature:landscape.natural%7Celement:geometry%7Ccolor:0x023e58&style=feature:poi%7Celement:geometry%7Ccolor:0x283d6a&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x6f9ba5&style=feature:poi%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:poi.park%7Celement:geometry.fill%7Ccolor:0x023e58&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x3C7680&style=feature:road%7Celement:geometry%7Ccolor:0x304a7d&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:road%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:road.highway%7Celement:geometry%7Ccolor:0x2c6675&style=feature:road.highway%7Celement:geometry.stroke%7Ccolor:0x255763&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0xb0d5ce&style=feature:road.highway%7Celement:labels.text.stroke%7Ccolor:0x023e58&style=feature:transit%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:transit%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:transit.line%7Celement:geometry.fill%7Ccolor:0x283d6a&style=feature:transit.station%7Celement:geometry%7Ccolor:0x3a4762&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x4e6d70"
         self.size = "480x360"
-        self.zoom = 15
+        print self.zoom
+        #self.zoom = 15
         self.mapLbl=QLabel()
         self.mapLbl.setAlignment(Qt.AlignCenter)
         self.vbox = QVBoxLayout()
@@ -400,107 +570,200 @@ class Maps(QWidget):
 
         image = QImage()
         image.loadFromData(data)      
-        self.mapLbl.setPixmap(QPixmap(image)) 
+        self.mapLbl.setPixmap(QPixmap(image))        
 
-class News(QWidget):
-    def __init__(self, source=None):
-        super(News, self).__init__()
-        # source
-        if source:
-          self.source = source
-        else:
-          # self.source = 'the-times-of-india'      
-          self.source = 'the-telegraph'      
-      
+class Directions(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(Directions, self).__init__()
+        self.initUI()
+
+    def initUI(self):
+
+        self.web_view = QWebView()
+
+        self.origin = 'Oslo+Norway'
+        self.destination = 'Telemark+Norway'
+        self.api_key = 'AIzaSyBHq3ygPUhqbjSUFW5E3FMqfagMiStkYFc'
+        self.api_base = 'https://www.google.com/maps/embed/v1/directions'
+        self.vbox = QVBoxLayout()
+
+        self.vbox.addWidget(self.web_view)
+
+        self.setLayout(self.vbox)
+        self.show_directions()
+
+    def show_directions(self):
+
+        self.url = self.api_base + '?key=%s&origin=%s&destination=%s'%(self.api_key,self.origin,self.destination)
+        self.html = '''<iframe src="%s" height="%d" width="%d"></iframe>''' %(self.url,dynamic_frame_h,dynamic_frame_w)
+        self.web_view.setHtml(self.html)
+
+class Calendar(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(Calendar, self).__init__()
         self.initUI()
 
     def initUI(self):
         self.vbox = QVBoxLayout()
-        self.heading = QLabel()
-        
-        self.size= "480x360"
-        
-        #self.source="the-times-of-india"
-        self.fbox = QFormLayout()
-        self.fbox.setAlignment(Qt.AlignLeft)
-        self.fbox.setSpacing(5)
+        self.cal = QCalendarWidget()
+        self.cal.setGridVisible(True)
+        self.vbox.addWidget(self.cal)
+        self.setLayout(self.vbox) 
 
-        self.heading.setAlignment(Qt.AlignCenter)
-        self.heading.setFont(font2)
 
-        self.vbox.addWidget(self.heading)
-        self.vbox.addLayout(self.fbox)
-        
-        self.setLayout(self.vbox)
-        self.news_fetcher()
-        #self.addWidget(News)
-        
 
-    #updating news
-    def news_fetcher(self):
+
+class Message(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(Message, self).__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.msgLbl=QLabel('Welcome Have A nice day!')
+        self.msgLbl.setAlignment(Qt.AlignCenter)
+        self.msgLbl.setFont(font2)
+        self.hbox = QHBoxLayout()
+        self.fname = ''
+        self.hbox.addWidget(self.msgLbl)
+        self.setLayout(self.hbox)
+        self.update_check()
+
+
+    def update_check(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_message)
+        self.timer.start(2000)
+
+    def update_message(self):
+        global current_userfname 
+        if current_userfname!=self.fname:
+            self.msgLbl.setText('Welcome %s Have A nice day!' % current_userfname)
+
+class Quotes(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(Quotes, self).__init__()
+        self.initUI()
+
+    def initUI(self):
+        self.hbox = QHBoxLayout()
+        self.lbl = QLabel()
+        self.hbox.addWidget(self.lbl)
+        self.setLayout(self.hbox)
+        self.quotes_get()
+
+    # def data_fetch(self,url):
+    #     url = requests.urlopen(url)
+    #     output = url.read().decode('utf-8')
+    #     quotes_obj_req = json.loads(output)
+    #     url.close()
+    #     return quotes_obj_req
+
+    # def data_get(quotes_obj_req):
+    #     quote_value=quotes_obj_req["quoteText"]
+    #     quote_Author = quotes_obj_req["quoteAuthor"]
+    #     print(quote_value)
+    #     print(quote_Author)
         
+    def quotes_get(self):
         try:
-            
-            news_req_url = "https://newsapi.org/v1/articles?source=%s&sortBy=latest&apiKey=15f23ada1b3d4740b80a2e4c16943993" % self.source
-            print news_req_url
-            r = requests.get(news_req_url)
-            news_obj = json.loads(r.text)
-            
-            print news_obj
-            
-            data0=news_obj["articles"][0]["title"]
-            data1=news_obj["articles"][1]["title"]
-            data2=news_obj["articles"][2]["title"]
-            data3=news_obj["articles"][3]["title"]
-            data4=news_obj["articles"][4]["title"]
-
-          
-            data_read = [data0,data1,data2,data3,data4]
-
-            print data_read
-            for i in reversed(range(self.fbox.count())): 
-                    self.fbox.itemAt(i).widget().setParent(None)
-                
-            for x in data_read:
-                #INDIA
-
-                if self.source == 'the-times-of-india':
-                    lbl = QLabel(x)
-                    lbl.setFont(font1)
-                    self.fbox.addRow(lbl)
-                    self.heading.setText('INDIA')
-                    
-                # Sports News
-                elif self.source == 'fox-sports':
-                    lbl = QLabel(x)
-                    self.fbox.addRow(lbl)
-                    self.heading.setText('SPORTS')
-                    
-                # Tech News
-                elif self.source == 'techcrunch':
-                    lbl = QLabel(x)
-                    self.fbox.addRow(lbl)
-                    self.heading.setText('TECHNOLOGY')
-                   
-                #WORLD
-                elif self.source == 'the-telegraph':
-                    lbl = QLabel(x)
-                    self.fbox.addRow(lbl)
-                    self.heading.setText('WORLD')
-                   
-                # Business
-                elif self.source == 'business-insider':
-                    lbl = QLabel(x)
-                    self.fbox.addRow(lbl)
-                    self.heading.setText('BUSINESS')
-                    
-
+            url= 'http://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en'
+            res = requests.get(url)
+            data = json.loads(res.text)
+            self.lbl.setText(data["quoteText"])
+            print data
+            #print self.data_get(self.data_fetch(url))
         except IOError:
             print('no internet')
 
+
+
+class DynamicFrame(QWidget):
+    def __init__(self, parent, *args, **kwargs):
+        super(DynamicFrame, self).__init__()
+        self.initUI()
+        self.prev_recorded_speech = ''
+        self.map_keys = ["maps","maths"]
+        self.cal_keys = ["calendar","calender"]
+        self.news_keys = ["news","muse","tech","sports","business","india","world","nude"]
+
+    def initUI(self):
+        self.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        self.vbox = QVBoxLayout()
+        self.setLayout(self.vbox)
+        self.update_check()
+        # self.map = Maps(15)
+        # self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        # self.vbox.addWidget(self.map)       
+
+
+    
+    def update_check(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_dynamic_frame)
+        self.timer.start(2000)
+
+
+    def update_dynamic_frame(self):
+        global recognised_speech
+        if recognised_speech != self.prev_recorded_speech:
+            
+            print recognised_speech
+            
+            self.prev_recorded_speech = recognised_speech
+
+            if "maps" in recognised_speech or "maths" in recognised_speech:
+                print "showing map"
+                for i in reversed(range(self.vbox.count())): 
+                    self.vbox.itemAt(i).widget().setParent(None)
+                
+                self.map = Maps(15)
+                self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+                self.vbox.addWidget(self.map)            
+
+            if "calendar" in recognised_speech or "calender" in recognised_speech:
+                print "showing calender"
+                for i in reversed(range(self.vbox.count())): 
+                    self.vbox.itemAt(i).widget().setParent(None)
+                
+                self.cal = Calendar(QWidget())
+                self.cal.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+                self.vbox.addWidget(self.cal)
+
+            if any(x in recognised_speech for x in self.news_keys):
+                print "showing news"
+                for i in reversed(range(self.vbox.count())): 
+                    self.vbox.itemAt(i).widget().setParent(None)
+                
+                if "tech" in recognised_speech:                 
+                    self.news = News('techcrunch')
+
+                elif "business" in recognised_speech or "bizness" in recognised_speech:
+                    self.news = News('business-insider')
+
+                elif "sport" in recognised_speech or "spot" in recognised_speech:
+                    self.news = News('fox-sports')
+
+                elif "world" in recognised_speech:
+                    self.news = News('the-telegraph')
+
+                else:
+                    self.news = News('the-times-of-india')                                    
+
+                self.news.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+                self.vbox.addWidget(self.news)
+
+
+
+
+
+
+       
+    
+
+
 class FullscreenWindow:
 
-    def __init__(self):
+    def __init__(self, parent, *args, **kwargs):
         self.qt = QWidget()
         self.qt.resize(window_width, window_height)
         self.pal=QPalette()
@@ -510,12 +773,16 @@ class FullscreenWindow:
         # for wheather and clock
 
         self.qt.hbox1 = QHBoxLayout()
-        self.qt.clock = Clock(QFrame())
-        self.qt.clock.setFrameShape(QFrame.StyledPanel)
-        self.qt.weather = Weather(QFrame())
-        self.qt.weather.setFrameShape(QFrame.StyledPanel)
+        self.qt.clock = Clock(QWidget())
+        #self.qt.clock.setFrameShape(QFrame.StyledPanel)
+        self.qt.weather = Weather(QWidget())
+        #self.qt.weather.setFrameShape(QFrame.StyledPanel)
+        self.qt.clock.setFixedHeight(150)
+        self.qt.weather.setFixedHeight(150)
+
         
         self.qt.hbox1.addWidget(self.qt.weather)
+        self.qt.hbox1.addStretch()
         self.qt.hbox1.addWidget(self.qt.clock)
 
         # for stocks
@@ -537,46 +804,169 @@ class FullscreenWindow:
         #dynamic area
 
         self.qt.hbox4 = QHBoxLayout()
-        self.qt.Dynamicframe = QWidget()
-        # self.qt.Dynamicframe.setFrameShape(QFrame.StyledPanel)
-        #self.qt.map = Maps(self.qt.Dynamicframe)
-        self.qt.news = News()
-        self.qt.hbox4.addWidget(self.qt.news)
+        self.qt.Dynamicframe = DynamicFrame(QWidget())
+        self.qt.hbox4.addWidget(self.qt.Dynamicframe)
 
         # message area
-        # self.qt.hbox5 = QHBoxLayout()
-        # self.qt.Messageframe = QFrame()
-        # self.qt.Messageframe.setFrameShape(QFrame.StyledPanel)
-        # self.qt.hbox5.addWidget(self.qt.Messageframe)
+        self.qt.hbox5 = QHBoxLayout()
+        self.qt.messageBox = Message(QWidget())
+        self.qt.hbox5.addWidget(self.qt.messageBox)
 
         # quotes area
-        # self.qt.hbox6 = QHBoxLayout()
-        # self.qt.Quotesframe = QFrame()
+        self.qt.hbox6 = QHBoxLayout()
+        self.qt.Quotesframe = QFrame()
         # self.qt.Quotesframe.setFrameShape(QFrame.StyledPanel)
-        # self.qt.hbox6.addWidget(self.qt.Quotesframe)
+        self.qt.quotes = Quotes(QWidget())
+        self.qt.hbox6.addWidget(self.qt.quotes)
 
-        #news
-        self.qt.hbox7 = QHBoxLayout()
-        #self.qt.Newsframe= QFrame()
-        #self.qt.Newsframe.setFrameShape(QFrame.StyledPanel)
-        #self.qt.news = News(self.qt.Newsframe)
-        self.qt.hbox7.addStretch(2)
-        #self.qt.hbox7.addWidget(self.qt.news)
 
         self.qt.vbox = QVBoxLayout()
         self.qt.vbox.addLayout(self.qt.hbox1)
         self.qt.vbox.addLayout(self.qt.hbox2)
         self.qt.vbox.addLayout(self.qt.hbox3)
         self.qt.vbox.addLayout(self.qt.hbox4)
-        # self.qt.vbox.addLayout(self.qt.hbox5)
-        # self.qt.vbox.addLayout(self.qt.hbox6)
-        self.qt.vbox.addLayout(self.qt.hbox7)
+        self.qt.vbox.addLayout(self.qt.hbox5)
+        self.qt.vbox.addLayout(self.qt.hbox6)
 
         self.qt.setLayout(self.qt.vbox)
         self.qt.show()
+      
+
+
+def start_qt(tmp):
+    a = QApplication(sys.argv)
+    w = FullscreenWindow(a)
+    sys.exit(a.exec_())
+
+def id_generator(size=20, chars=string.ascii_lowercase + string.digits + string.ascii_uppercase):
+    return ''.join(random.choice(chars) for _ in range(size))
+
+def face_identify(tmp):
+
+    global current_userid
+    global current_userfname
+
+    detected_personid = ''
+    camera_port = 1
+    cascPath = 'haarcascade_frontalface_default.xml'
+    faceCascade = cv2.CascadeClassifier(cascPath)
+    
+    ramp_frames = 50
+    cam = cv2.VideoCapture(camera_port) 
+    print "Face identification started .........."
+
+    try:
+        while True:
+            for i in xrange(ramp_frames):
+                s, im = cam.read()   
+
+            ret,image = cam.read()
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+            faces = faceCascade.detectMultiScale(
+                gray,
+                scaleFactor=1.1,
+                minNeighbors=5,
+                minSize=(120, 120),
+                flags=cv2.cv.CV_HAAR_SCALE_IMAGE
+            )
+            
+            # Draw a rectangle around the faces
+            max_area = 0
+            mx = 0
+            my = 0 
+            mh = 0 
+            mw = 0
+            for (x, y, w, h) in faces:
+                #cv2.rectangle(image, (x, y), (x+w, y+h), (0, 255, 0), 2)
+                if w*h > max_area:
+                    mx = x
+                    my = y
+                    mh = h
+                    mw = w
+                    max_area=w*h
+
+            cv2.imshow('Video', image)        
+            image_crop = image[my:my+mh,mx:mx+mw]
+            file_name = id_generator()+'.jpg'
+            file = os.path.join(tmp_path,file_name)
+            cloudinary_url=cloudinary_tmp + '/' + file_name        
+            cv2.imwrite(file, image_crop)
+            imup.upload_image(file,file_name)
+            
+            faceid=msface.face_detect(cloudinary_url)
+            
+            print "faceId = " + str(faceid)
+            detected_personid = msface.face_identify(faceid)
+            print "detected_personid = " + str(detected_personid)
+            
+
+            
+            if detected_personid:
+                comm = "SELECT * FROM users WHERE personid = '%s'" % detected_personid
+                res = cursor.execute(comm)
+                res = cursor.fetchone()
+                if res:
+                    current_userid = res[0]
+                    current_userfname = res[2]
+                    fname = res[2]
+                    print "Welcome %s !" % fname
+
+                else:
+                    print "person id not found in database"
+
+                break 
+            
+            else:
+                print "Unknown person found"
+                           
+    except Exception as e:
+        print "Errors occured !"
+        print e
+
+    cam.release()
+    cv2.destroyAllWindows() 
+    
+
+
+
+def start_speech_recording(tmp): 
+# Record Audio
+    global recognised_speech 
+    while True:
+        r = sr.Recognizer()
+        with sr.Microphone() as source:
+            print("Say something!")
+            r.adjust_for_ambient_noise(source, duration = 1)
+            audio = r.listen(source)
+        
+        try:
+            recognised_speech = r.recognize_google(audio)
+            print("You said: " + r.recognize_google(audio))
+            # if "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech:
+            #     thread.start_new_thread( face_identify, (3, ) )       
+        except sr.UnknownValueError:
+            print("Google Speech Recognition could not understand audio")
+        except sr.RequestError as e:
+            print("Could not request results from Google Speech Recognition service; {0}".format(e))
+
+
+
 
 
 if __name__ == '__main__':
-    a = QApplication(sys.argv)
-    w = FullscreenWindow()
-    sys.exit(a.exec_())
+
+    try:
+        
+        thread.start_new_thread( start_qt, (1, ) )
+        thread.start_new_thread( start_speech_recording, (2, ) )
+        #thread.start_new_thread( face_identify, (3, ) )
+
+        
+
+    except Exception as e:
+        print "Error: unable to start thread"
+        print e
+
+    while 1:
+       pass  

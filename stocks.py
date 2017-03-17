@@ -52,6 +52,7 @@ camera_port = 1
 
 stock={
     'userid':'',
+    'username':'',
     'code':'',
     'name':'',
     'stock_exchange':'',
@@ -90,14 +91,14 @@ class CreateForm(QFrame):
         #self.bottom.setFrameShape(QFrame.StyledPanel)
         self.vbox = QVBoxLayout()
         #self.uname = ''
-        self.useridLbl = QLabel('User Id')
+        self.usernameLbl = QLabel('Username')
         self.codeLbl = QLabel('Code')
         self.nameLbl = QLabel('Name')
         self.stockexchangeLbl = QLabel('Stock Exchange')
         #self.genderLbl = QLabel('Gender')
         #self.dobLbl = QLabel('DOB')
 
-        self.useridEdt = QLineEdit()
+        self.usernameEdt = QLineEdit()
         self.codeEdt = QLineEdit()
         self.nameEdt = QLineEdit()
         self.stockexchangeEdt = QLineEdit()
@@ -107,7 +108,7 @@ class CreateForm(QFrame):
         #self.dobEdt.setCalendarPopup(True)
         #self.genderEdt.addItems(["Male", "Female","Other"])
         #self.unameEdt.textChanged.connect(self.__handleTextChanged)
-        self.useridEdt.textChanged.connect(self.__handleTextChanged)
+        self.usernameEdt.textChanged.connect(self.__handleTextChanged)
         self.codeEdt.textChanged.connect(self.__handleTextChanged)
         self.nameEdt.textChanged.connect(self.__handleTextChanged)
         self.stockexchangeEdt.textChanged.connect(self.__handleTextChanged)
@@ -116,7 +117,7 @@ class CreateForm(QFrame):
         self.fbox=QFormLayout()
         self.fbox.setContentsMargins(100, 20, 100, 20)
         self.fbox.setSpacing(10)
-        self.fbox.addRow(self.useridLbl,self.useridEdt)
+        self.fbox.addRow(self.usernameLbl,self.usernameEdt)
         self.fbox.addRow(self.codeLbl,self.codeEdt)
         self.fbox.addRow(self.nameLbl,self.nameEdt)
         self.fbox.addRow(self.stockexchangeLbl,self.stockexchangeEdt)
@@ -175,12 +176,12 @@ class CreateForm(QFrame):
         self.verified=False
         global new_stock_added
         new_stock_added = False
-        if (not self.useridEdt.text()) or (not self.codeEdt.text()) or (not self.nameEdt.text()) or (not self.stockexchangeEdt.text()) :
+        if (not self.usernameEdt.text()) or (not self.codeEdt.text()) :
             self.messageLbl.setText('Error: One or more required fields empty! verification failed')
             print 'One or more required fields empty ! fill them all'
             print 'Verification failed'
             return
-        stock['userid']=str(self.useridEdt.text())
+        stock['username']=str(self.usernameEdt.text())
         stock['code']=str(self.codeEdt.text())
         stock['name']=str(self.nameEdt.text())
         stock['stock_exchange']=str(self.stockexchangeEdt.text())
@@ -188,14 +189,16 @@ class CreateForm(QFrame):
         #user['dob']=str(self.dobEdt.date().toString('dd-MM-yyyy'))
         #user['gender']=str(self.genderEdt.currentText())
         
-        sql_command = """SELECT * FROM stocks WHERE code = '%s' """ % (stock['code'])
+        sql_command = """SELECT * FROM users WHERE uname = '%s' """ % (stock['username'])
         cursor.execute(sql_command)
         
-        if cursor.fetchone():
-            self.messageLbl.setText('Error: The given stock already exist! try something new')
-            print 'Stock code already exist'
+        if (not cursor.fetchone()):
+            self.messageLbl.setText('Error: The given username does not exist! Please register yourself...')
+            print 'User name does not exist'
             print 'Verification failed'
         else:
+            cursor.execute(sql_command)
+            stock['userid']=cursor.fetchone()[0]
             self.messageLbl.setText('Success: Verification Successful!')
             print 'verification successful'
             self.verified = True
@@ -209,7 +212,7 @@ class CreateForm(QFrame):
             print "Stock name = " + stock['name']
             
             format_str = """INSERT INTO stocks (id, userid, code, name, stock_exchange) 
-                     VALUES (NULL,%s,%s,%s,%s,%s,%s,%s);"""
+                     VALUES (NULL,%s,%s,%s,%s);"""
             params = (stock['userid'], stock['code'], stock['name'], stock['stock_exchange'])         
             cursor.execute(format_str,params)
             self.messageLbl.setText('Success: Stock added to database sucessfully!')
@@ -524,6 +527,7 @@ class MainWindow:
         self.DetailsTab=AddDetailsTab(self.tab1)
         self.qt.addTab(self.DetailsTab,"Create Stock")
         self.qt.show()
+        self.qt.setStyleSheet("#gframe {border-radius:5px;border:1px solid #a5a5a5}")
     
         """
         self.tab2 = QWidget()

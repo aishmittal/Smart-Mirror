@@ -124,17 +124,23 @@ def face_identify(faceId):
     body = '{ "personGroupId":"%s","faceIds":["%s"]}' % (personGroupId, faceId)
     #print body
     try:
+        print "Face Identify in MSFace"
         conn = httplib.HTTPSConnection('westus.api.cognitive.microsoft.com')
         conn.request("POST", "/face/v1.0/identify?" , body, headers)
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
         pid=data[0]['candidates'][0]['personId']
+        print "PID: " + pid
+        
+        if not pid:
+            return ''
         #print(pid)
         conn.close()
         return pid
     except Exception as e:
-        print("Error: %s" % e.message) 
+        print("Error: %s" % e.message)
+        return '' 
 
 def train():
     try:
