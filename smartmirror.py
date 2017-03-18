@@ -900,7 +900,7 @@ def face_identify(tmp):
     global current_userfname
 
     detected_personid = ''
-    camera_port = 1
+    camera_port = 3
     cascPath = 'haarcascade_frontalface_default.xml'
     faceCascade = cv2.CascadeClassifier(cascPath)
     
@@ -910,7 +910,7 @@ def face_identify(tmp):
     cam = cv2.VideoCapture(camera_port) 
     try:
         
-        while detected_personid=='':
+        while True:
             for i in xrange(ramp_frames):
                 s, im = cam.read()   
 
@@ -940,22 +940,25 @@ def face_identify(tmp):
                     mw = w
                     max_area=w*h
 
-            #cv2.imshow('Video', image)        
-            image_crop = image[my:my+mh,mx:mx+mw]
-            file_name = id_generator()+'.jpg'
-            file = os.path.join(tmp_path,file_name)
-            cloudinary_url=cloudinary_tmp + '/' + file_name        
-            cv2.imwrite(file, image_crop)
-            imup.upload_image(file,file_name)
+            #cv2.imshow('Video', image)
+            if max_area>=15000:        
+                image_crop = image[my:my+mh,mx:mx+mw]
+                file_name = id_generator()+'.jpg'
+                file = os.path.join(tmp_path,file_name)
+                cloudinary_url=cloudinary_tmp + '/' + file_name        
+                cv2.imwrite(file, image_crop)
+                imup.upload_image(file,file_name)
+                
+                faceid=msface.face_detect(cloudinary_url)
+                
+                print "faceId = " + str(faceid)
+                detected_personid = msface.face_identify(faceid)
+                print "detected_personid = " + str(detected_personid)
             
-            faceid=msface.face_detect(cloudinary_url)
-            
-            print "faceId = " + str(faceid)
-            detected_personid = msface.face_identify(faceid)
-            print "detected_personid = " + str(detected_personid)
-            
+            else:
+                continue    
 
-            
+                
             if detected_personid:
                 comm = "SELECT * FROM users WHERE personid = '%s'" % detected_personid
                 res = cursor.execute(comm)
@@ -965,11 +968,11 @@ def face_identify(tmp):
                     current_userfname = res[2]
                     fname = res[2]
                     print "Welcome %s !" % fname
+                    return
 
                 else:
                     print "person id not found in database"
 
-                break 
             
             else:
                 print "Unknown person found"
@@ -997,7 +1000,7 @@ def start_speech_recording(tmp):
         try:
             recognised_speech = r.recognize_google(audio).lower()
             print("You said: " + r.recognize_google(audio))
-            if "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech or "breakup" in recognised_speech:
+            if "hallo" in recognised_speech or "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech or "breakup" in recognised_speech:
                 thread.start_new_thread( face_identify, (3, ) )       
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand audio")
@@ -1014,7 +1017,7 @@ if __name__ == '__main__':
         
         thread.start_new_thread( start_qt, (1, ) )
         thread.start_new_thread( start_speech_recording, (2, ) )
-        # thread.start_new_thread( face_identify, (3, ) )
+        thread.start_new_thread( face_identify, (3, ) )
 
         
 

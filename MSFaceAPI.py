@@ -26,7 +26,7 @@ def face_detect(image_url):
         data = response.read()
         conn.close()
         obj = json.loads(data)
-        #print obj[0]['faceId']
+        print "FaceID: " + obj[0]['faceId']
         return obj[0]['faceId']
     except Exception as e:
         print("Error: %s" % e.message)
@@ -62,7 +62,7 @@ def get_persons():
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
-        #print(data)
+        print(data)
         persons=[]
         for row in data:
             persons.append({'name':row['name'],'personId':row['personId']})
@@ -70,18 +70,18 @@ def get_persons():
 
         return persons
     except Exception as e:
-        print("Error: %s" % e.message)
+        print e
 
 
 def create_person(pname,udata):
     params = urllib.urlencode({
         'personGroupId' : personGroupId
     })
-    persons=get_persons()
+    # persons=get_persons()
     
-    for row in persons:
-        if pname == row['name']:
-            return row['personId']    
+    # for row in persons:
+    #     if pname == row['name']:
+    #         return row['personId']    
     body = '{"name":"%s","userData":"%s"}' % (pname,udata)
     
     try:
@@ -111,7 +111,7 @@ def add_person_face(personId,image_url):
         response = conn.getresponse()
         data = response.read()
         data = json.loads(data)
-        #print data
+        print data
         conn.close()
     except Exception as e:
         print(e)    
@@ -154,7 +154,11 @@ def train():
 
 
 
-#if __name__ == '__main__':
+# if __name__ == '__main__':
+    # add_person_face('a484672a-0791-475b-aa77-772a107ae0fc','http://res.cloudinary.com/aish/image/upload/v1489463899/SmartMirror/dataset/aish/img_3.jpg')
+    # get_persons()
+    # create_person('test','')
+    # face_detect('http://res.cloudinary.com/aish/image/upload/v1489463901/SmartMirror/dataset/aish/img_1.jpg')
     #fid =face_detect('http://res.cloudinary.com/aish/image/upload/v1488457817/SmartMirror/aishwarya/6.jpg')        
     #print fid
     #print create_person('aishwarya_mittal','Aishwarya Mittal')
