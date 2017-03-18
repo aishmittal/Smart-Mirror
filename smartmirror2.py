@@ -332,6 +332,18 @@ class Stocks(QWidget):
         
         self.fbox.addRow(self.stockLbl,self.priceLbl)
         self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
+
+    
+        if (current_userid != 0):
+
+            sql_command = " SELECT * from stocks where userid = %s " % current_userid 
+            cursor.execute(sql_command)
+            self.obj = cursor.fetchall()
+        
+            self.stockNames = []
+        
+            for i,stock in enumerate(self.obj):
+                self.stockNames.append(stock[2])
         
         self.update_check()        
         self.vbox.addLayout(self.fbox)
@@ -347,25 +359,10 @@ class Stocks(QWidget):
         
         if self.prev_userid != current_userid:
             
-
+            self.prev_userid = current_userid
             for i in reversed(range(self.fbox.count())): 
                 self.fbox.itemAt(i).widget().setParent(None)
-                
-            self.prev_userid = current_userid
-            
-            if (current_userid != 0):
-                sql_command = " SELECT * from stocks where userid = %s " % current_userid 
-                cursor.execute(sql_command)
-                self.obj = cursor.fetchall()
-            
-                self.stockNames = []
-            
-                for i,stock in enumerate(self.obj):
-                    self.stockNames.append(stock[2])
-            
-            else:
-                self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
-
+                  
             for i,stock in enumerate(self.stockNames):
                 stkLbl = QLabel(str(stock))
                 data  = getQuotes(stock)
@@ -407,6 +404,19 @@ class Events(QWidget):
         self.eventTime = []
         self.noEventLbl = QLabel('No Event Today')
 
+        if (current_userid != 0):
+
+            sql_command = """ SELECT * from events where userid = %s  """ % current_userid
+            params = (current_userid)
+            cursor.execute(sql_command)
+            self.obj = cursor.fetchall()
+        
+            self.eventNames = []
+            self.eventTime = []
+            for i,event in enumerate(self.obj):
+                    self.eventNames.append(event[2])
+                    self.eventTime.append(event[4])
+     
         self.update_check()
 
         self.vbox.addLayout(self.fbox)
@@ -421,36 +431,94 @@ class Events(QWidget):
     def update_events(self):
         global current_userid
         if self.prev_userid != current_userid:
-            
             for i in reversed(range(self.fbox.count())): 
                 self.fbox.itemAt(i).widget().setParent(None)
-            
-            self.prev_userid = current_userid
-
-            if (current_userid != 0):
-
-                sql_command = """ SELECT * from events where userid = %s  """ % current_userid
-                params = (current_userid)
-                cursor.execute(sql_command)
-                self.obj = cursor.fetchall()
-                self.eventNames = []
-                self.eventTime = []
                 
-                for i,event in enumerate(self.obj):
-                        self.eventNames.append(event[2])
-                        self.eventTime.append(event[4])
-             
-                for i,event in enumerate(self.eventNames):
-                    
-                    eventLbl = QLabel(str(event))
-                    timeLbl = QLabel(':'.join(str(self.eventTime[i]).split(':')[:2]))
-                    eventLbl.setFont(font1)
-                    timeLbl.setFont(font1)
-                    self.fbox.addRow(eventLbl, timeLbl)
+            self.prev_userid = current_userid
+            for i,event in enumerate(self.eventNames):
+                eventLbl = QLabel(str(event))
+                #data  = getquotes(stock)
+                timeLbl = QLabel(':'.join(str(self.eventTime[i]).split(':')[:2]))
+                eventLbl.setFont(font1)
+                timeLbl.setFont(font1)
+                self.fbox.addRow(eventLbl, timeLbl)
 
             if (current_userid == 0):
                 self.fbox.addRow(self.noEventLbl)
-       
+
+
+
+
+
+# class Stocks(QWidget):
+#     def __init__(self, parent, *args, **kwargs):
+#         super(Stocks, self).__init__()
+#         self.initUI()
+
+#     def initUI(self):
+        
+#         self.heading = QLabel('STOCK MARKET TODAY')
+#         self.heading.setAlignment(Qt.AlignCenter)
+#         self.heading.setFont(font2)
+#         self.vbox = QVBoxLayout()
+#         self.vbox.addWidget(self.heading)
+#         self.hbox = QHBoxLayout()
+#         self.hbox.setAlignment(Qt.AlignCenter)
+#         self.fbox = QFormLayout()
+#         self.fbox.setSpacing(10)
+        
+#         self.fbox.setAlignment(Qt.AlignCenter)
+#         self.stockLbl = QLabel('Stock Name')
+#         self.priceLbl = QLabel('Current Price (Rs.)')
+#         self.stockLbl.setFont(font1)
+#         self.priceLbl.setFont(font1)
+#         self.fbox.addRow(self.stockLbl,self.priceLbl)
+#         self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
+#         self.update_stocks()
+        
+#         self.hbox .addLayout(self.fbox)        
+#         self.vbox.addLayout(self.hbox)
+#         self.setLayout(self.vbox)
+
+#     def update_stocks(self):
+
+#         for i,stock in enumerate(self.stockNames):
+#             stkLbl = QLabel(stock)
+#             data  = getQuotes(stock)
+#             prcLbl = QLabel(data[0]['LastTradePrice'])
+#             stkLbl.setFont(font1)
+#             prcLbl.setFont(font1)
+#             self.fbox.addRow(stkLbl,prcLbl)
+
+
+
+# class Events(QWidget):
+#     def __init__(self, parent, *args, **kwargs):
+#         super(Events, self).__init__()
+#         self.initUI()
+
+#     def initUI(self):
+
+#         self.heading = QLabel('Today\'s Events')
+#         self.heading.setFont(font2)
+#         self.heading.setAlignment(Qt.AlignCenter)
+
+#         self.vbox = QVBoxLayout()
+#         self.vbox.addWidget(self.heading)
+#         self.setLayout(self.vbox)
+#         self.fbox = QFormLayout()
+#         self.fbox.setSpacing(10)
+        
+#         self.fbox.setAlignment(Qt.AlignCenter)
+#         self.nameLbl = QLabel('Name')
+#         self.timeLbl = QLabel('Time')
+#         self.nameLbl.setFont(font1)
+#         self.timeLbl.setFont(font1)
+
+#         self.fbox.addRow(self.nameLbl,self.timeLbl)
+#         self.stockNames = ['Meeting','Class', 'Movie','Party']
+        
+        
 
 
 class News(QWidget):
@@ -607,16 +675,16 @@ class Maps(QWidget):
 
                 lat = location_obj['latitude']
                 lon = location_obj['longitude']
-                print ("%.10f,%.10f")%(lat,lon)
+                print lat,lon
 
                 location2 = "%s, %s" % (location_obj['city'], location_obj['region_code'])
 
             
-                self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%f,%f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,lat,lon,self.zoom,self.style,self.size)
+                self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%.4f,%.4f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,lat,lon,self.zoom,self.style,self.size)
         
         else:
             location2 = ""
-            self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%f,%f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,latitude,longitude,self.zoom,self.style,self.size)
+            self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%.4f,%.4f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,latitude,longitude,self.zoom,self.style,self.size)
         
 
         #print self.url  
@@ -746,12 +814,12 @@ class DynamicFrame(QWidget):
         self.vbox = QVBoxLayout()
         self.setLayout(self.vbox)
         self.update_check()
-        # self.map = Maps(15)
-        # self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-        # self.vbox.addWidget(self.map)
-        self.news = News('the-times-of-india') 
-        self.news.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-        self.vbox.addWidget(self.news)
+        self.map = Maps(15)
+        self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        self.vbox.addWidget(self.map)
+        # self.news = News('the-times-of-india') 
+        # self.news.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        # self.vbox.addWidget(self.news)
         # self.cal = Calendar(QWidget())
         # self.cal.setFixedSize(dynamic_frame_w,dynamic_frame_h)
         # self.vbox.addWidget(self.cal)       
@@ -800,10 +868,10 @@ class DynamicFrame(QWidget):
                 elif "business" in recognised_speech or "bizness" in recognised_speech:
                     self.news = News('business-insider')
 
-                elif "sport" in recognised_speech or "spot" in recognised_speech or "sports" in recognised_speech:
+                elif "sport" in recognised_speech or "spot" in recognised_speech:
                     self.news = News('fox-sports')
 
-                elif "world" in recognised_speech or "word" in recognised_speech:
+                elif "world" in recognised_speech:
                     self.news = News('the-telegraph')
 
                 else:
@@ -904,12 +972,12 @@ def face_identify(tmp):
     cascPath = 'haarcascade_frontalface_default.xml'
     faceCascade = cv2.CascadeClassifier(cascPath)
     
-    ramp_frames = 10
+    ramp_frames = 50
     
     print "Face identification started .........."
-    cam = cv2.VideoCapture(camera_port) 
+
     try:
-        
+        cam = cv2.VideoCapture(camera_port) 
         while detected_personid=='':
             for i in xrange(ramp_frames):
                 s, im = cam.read()   
@@ -940,7 +1008,7 @@ def face_identify(tmp):
                     mw = w
                     max_area=w*h
 
-            #cv2.imshow('Video', image)        
+            cv2.imshow('Video', image)        
             image_crop = image[my:my+mh,mx:mx+mw]
             file_name = id_generator()+'.jpg'
             file = os.path.join(tmp_path,file_name)
@@ -973,13 +1041,14 @@ def face_identify(tmp):
             
             else:
                 print "Unknown person found"
+            
+
+        cam.release()
+        cv2.destroyAllWindows() 
                                    
     except Exception as e:
         print "Errors occured !"
-        print e    
-
-    cam.release()
-    cv2.destroyAllWindows() 
+        print e
 
 
 
@@ -995,9 +1064,9 @@ def start_speech_recording(tmp):
             audio = r.listen(source)
         
         try:
-            recognised_speech = r.recognize_google(audio).lower()
+            recognised_speech = r.recognize_google(audio)
             print("You said: " + r.recognize_google(audio))
-            if "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech or "breakup" in recognised_speech:
+            if "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech:
                 thread.start_new_thread( face_identify, (3, ) )       
         except sr.UnknownValueError:
             print("Google Speech Recognition could not understand audio")
