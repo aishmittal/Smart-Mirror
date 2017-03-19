@@ -900,7 +900,7 @@ def face_identify(tmp):
     global current_userfname
 
     detected_personid = ''
-    camera_port = 3
+    camera_port = 1
     cascPath = 'haarcascade_frontalface_default.xml'
     faceCascade = cv2.CascadeClassifier(cascPath)
     

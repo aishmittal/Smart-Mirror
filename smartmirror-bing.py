@@ -16,10 +16,11 @@ import traceback
 import urllib2
 import feedparser
 import thread
+import datetime
 import string
 import MySQLdb
 import random
-import datetime
+import urllib
 
 import pyaudio 
 import speech_recognition as sr
@@ -37,7 +38,7 @@ window_width = 540
 window_height = 960
 window_x = 400
 window_y = 150
-dynamic_frame_w = 500
+dynamic_frame_w = 600
 dynamic_frame_h = 400
 ip = '<IP>'
 ui_locale = '' # e.g. 'fr_FR' fro French, '' as default
@@ -63,9 +64,9 @@ cloudinary_tmp = 'http://res.cloudinary.com/aish/image/upload/v1488457817/SmartM
 google_map_api = 'AIzaSyCOW4YsV4gl7tAowsyPw_9ocO8iGTKD8A8'
 
 recognised_speech = ''
-current_userid = 1 
-today = datetime.datetime.now().strftime("%d-%m-%Y")
+current_userid = 0
 current_userfname = ''
+today = datetime.datetime.now().strftime("%d-%m-%Y")
 
 @contextmanager
 def setlocale(name): #thread proof function to work with locale
@@ -170,7 +171,7 @@ class Weather(QWidget):
 
     def get_weather(self):
         try:
-            print 'getting weather'
+            print 'Getting weather ......'
             if latitude is None and longitude is None:
                 # get location
                 location_req_url = "http://freegeoip.net/json/%s" % self.get_ip()
@@ -193,7 +194,9 @@ class Weather(QWidget):
             weather_obj = json.loads(r.text)
 
             degree_sign= u'\N{DEGREE SIGN}'
-            temperature2 = "%s%s" % (str(int(weather_obj['currently']['temperature'])), degree_sign)
+            f = int(weather_obj['currently']['temperature'])
+            c = int(5*(f-32)/9)
+            temperature2 = "%s%s" % (str(c), degree_sign)
             currently2 = weather_obj['currently']['summary']
             forecast2 = weather_obj["hourly"]["summary"]
 
@@ -207,10 +210,6 @@ class Weather(QWidget):
                 if self.icon != icon2:
                     self.icon = icon2
                     image = cv2.imread(icon2, cv2.CV_LOAD_IMAGE_COLOR);
-                    #image = Image.open(icon2)
-                    #image = image.resize((100, 100), Image.ANTIALIAS)
-                    #image = image.convert('RGB')
-                    #photo = ImageTk.PhotoImage(image)
                     image = cv2.resize(image,(50,50), interpolation = cv2.INTER_CUBIC)
                     image = QImage(image, image.shape[1], image.shape[0], 
                        image.strides[0], QImage.Format_RGB888)
@@ -306,114 +305,157 @@ class Clock(QWidget):
                 self.dateLbl.setText(date2)
 
 
-
-class Stocks(QFrame):
+class Stocks(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(Stocks, self).__init__()
+        self.prev_userid = -1
         self.initUI()
 
     def initUI(self):
         
-        self.heading = QLabel('Stock Market')
-        self.heading.setAlignment(Qt.AlignCenter)
+        self.heading = QLabel('Stocks Today')
+        self.heading.setAlignment(Qt.AlignLeft)
         self.heading.setFont(font2)
+        
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.heading)
+        self.vbox.setAlignment(Qt.AlignTop)
+
         self.fbox = QFormLayout()
         self.fbox.setSpacing(10)
         self.fbox.setAlignment(Qt.AlignLeft)
+        
         self.stockLbl = QLabel('Stocks')
-        self.priceLbl = QLabel('Current Price')
+        self.priceLbl = QLabel('Current Price (Rs.)')
         self.stockLbl.setFont(font1)
         self.priceLbl.setFont(font1)
+        
         self.fbox.addRow(self.stockLbl,self.priceLbl)
         self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
-
-	
-        if (current_userid != 0):
-
-            sql_command = " SELECT * from stocks where userid = %s " % current_userid 
-            cursor.execute(sql_command)
-            self.obj = cursor.fetchall()
-	    
-            self.stockNames = []
-	    for i,stock in enumerate(self.obj):
-                self.stockNames.append(stock[2])
-                
-            #print self.stocks
-
-
-	self.update_stocks()
-                
+        
+        self.update_check()        
         self.vbox.addLayout(self.fbox)
         self.setLayout(self.vbox)
 
+    def update_check(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_stocks)
+        self.timer.start(500)    
+    
     def update_stocks(self):
-        for i,stock in enumerate(self.stockNames):
-            stkLbl = QLabel(str(stock))
-            data  = getQuotes(stock)
-            prcLbl = QLabel(data[0]['LastTradePrice'])
-            stkLbl.setFont(font1)
-            prcLbl.setFont(font1)
-            self.fbox.addRow(stkLbl,prcLbl)
+        global current_userid
+        
+        if self.prev_userid != current_userid:
+            
+
+            for i in reversed(range(self.fbox.count())): 
+                self.fbox.itemAt(i).widget().setParent(None)
+                
+            self.prev_userid = current_userid
+            
+            if (current_userid != 0):
+                sql_command = " SELECT * from stocks where userid = %s " % current_userid 
+                cursor.execute(sql_command)
+                self.obj = cursor.fetchall()
+            
+                self.stockNames = []
+            
+                for i,stock in enumerate(self.obj):
+                    self.stockNames.append(stock[2])
+            
+            else:
+                self.stockNames = ['SENSEX','NIFTY', 'RELIANCE','ITC','TCS']
+
+            for i,stock in enumerate(self.stockNames):
+                stkLbl = QLabel(str(stock))
+                data  = getQuotes(stock)
+                prcLbl = QLabel(data[0]['LastTradePrice'])
+                stkLbl.setFont(font1)
+                prcLbl.setFont(font1)
+                self.fbox.addRow(stkLbl,prcLbl)
 
 
 
-class Events(QFrame):
+class Events(QWidget):
     def __init__(self, parent, *args, **kwargs):
         super(Events, self).__init__()
+        self.prev_userid = -1
         self.initUI()
 
     def initUI(self):
 
         self.heading = QLabel("Today's Events")
-        self.heading.setAlignment(Qt.AlignCenter)
+        self.heading.setAlignment(Qt.AlignLeft)
         self.heading.setFont(font2)
 
         self.vbox = QVBoxLayout()
         self.vbox.addWidget(self.heading)
+        self.vbox.setAlignment(Qt.AlignTop)
+        
         self.fbox = QFormLayout()
         self.fbox.setSpacing(10)
         self.fbox.setAlignment(Qt.AlignLeft)
+        
         self.eventLbl = QLabel('Events')
         self.timeLbl = QLabel('Time')
         self.eventLbl.setFont(font1)
         self.timeLbl.setFont(font1)
+        
         self.fbox.addRow(self.eventLbl,self.timeLbl)
+        
         self.eventNames = []
+        self.eventTime = []
+        self.noEventLbl = QLabel('No Event Today')
 
-        if (current_userid != 0):
+        self.update_check()
 
-            sql_command = """ SELECT * from events where userid = %s  """ % current_userid
-            params = (current_userid)
-            cursor.execute(sql_command)
-            self.obj = cursor.fetchall()
-	    
-            self.eventNames = []
-            self.eventTime = []
-	    for i,event in enumerate(self.obj):
-                self.eventNames.append(event[2])
-                self.eventTime.append(event[4])
- 
-	self.update_events()
-                
         self.vbox.addLayout(self.fbox)
         self.setLayout(self.vbox)
 
+    
+    def update_check(self):
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_events)
+        self.timer.start(500)
+
     def update_events(self):
-        for i,event in enumerate(self.eventNames):
-            eventLbl = QLabel(str(event))
-            #data  = getquotes(stock)
-            timeLbl = QLabel(str(self.eventTime[i]))
-            eventLbl.setFont(font1)
-            timeLbl.setFont(font1)
-            self.fbox.addRow(eventLbl, timeLbl)
+        global current_userid
+        if self.prev_userid != current_userid:
+            
+            for i in reversed(range(self.fbox.count())): 
+                self.fbox.itemAt(i).widget().setParent(None)
+            
+            self.prev_userid = current_userid
+
+            if (current_userid != 0):
+
+                sql_command = """ SELECT * from events where userid = %s  """ % current_userid
+                params = (current_userid)
+                cursor.execute(sql_command)
+                self.obj = cursor.fetchall()
+                self.eventNames = []
+                self.eventTime = []
+                
+                for i,event in enumerate(self.obj):
+                        self.eventNames.append(event[2])
+                        self.eventTime.append(event[4])
+             
+                for i,event in enumerate(self.eventNames):
+                    
+                    eventLbl = QLabel(str(event))
+                    timeLbl = QLabel(':'.join(str(self.eventTime[i]).split(':')[:2]))
+                    eventLbl.setFont(font1)
+                    timeLbl.setFont(font1)
+                    self.fbox.addRow(eventLbl, timeLbl)
+
+            if (current_userid == 0):
+                self.fbox.addRow(self.noEventLbl)
+       
 
 
-
-class news(QWidget):
+class News(QWidget):
     def __init__(self, source=None):
-        super(news, self).__init__()
+        super(News, self).__init__()
         # source
         if source:
           self.source = source
@@ -421,28 +463,30 @@ class news(QWidget):
           # self.source = 'the-times-of-india'      
           self.source = 'the-telegraph'      
       
-        self.initui()
+        self.initUI()
 
-    def initui(self):
-        self.vbox = qvboxlayout()
-        self.heading = qlabel()
+    def initUI(self):
+        
+        self.vbox = QVBoxLayout()
+        self.heading = QLabel()
         
         self.size= "480x360"
+
         
         #self.source="the-times-of-india"
-        self.fbox = qformlayout()
-        self.fbox.setalignment(qt.alignleft)
-        self.fbox.setspacing(5)
+        self.fbox = QFormLayout()
+        self.fbox.setAlignment(Qt.AlignLeft)
+        self.fbox.setSpacing(8)
 
-        self.heading.setalignment(qt.aligncenter)
-        self.heading.setfont(font2)
-
-        self.vbox.addwidget(self.heading)
-        self.vbox.addlayout(self.fbox)
+        self.heading.setAlignment(Qt.AlignCenter)
+        self.heading.setFont(font2)
         
-        self.setlayout(self.vbox)
+        self.vbox.addWidget(self.heading)
+        self.vbox.addLayout(self.fbox)
+        
+        self.setLayout(self.vbox)
         self.news_fetcher()
-        #self.addwidget(news)
+        #self.addWidget(News)
         
 
     #updating news
@@ -450,12 +494,12 @@ class news(QWidget):
         
         try:
             
-            news_req_url = "https://newsapi.org/v1/articles?source=%s&sortby=latest&apikey=15f23ada1b3d4740b80a2e4c16943993" % self.source
-            print news_req_url
+            news_req_url = "https://newsapi.org/v1/articles?source=%s&sortBy=latest&apiKey=15f23ada1b3d4740b80a2e4c16943993" % self.source
+            # print news_req_url
             r = requests.get(news_req_url)
             news_obj = json.loads(r.text)
             
-            print news_obj
+            # print news_obj
             
             data0=news_obj["articles"][0]["title"]
             data1=news_obj["articles"][1]["title"]
@@ -466,42 +510,53 @@ class news(QWidget):
           
             data_read = [data0,data1,data2,data3,data4]
 
-            print data_read
+            #print data_read
             for i in reversed(range(self.fbox.count())): 
-                    self.fbox.itemat(i).widget().setparent(none)
+                    self.fbox.itemAt(i).widget().setParent(None)
                 
-            for x in data_read:
-                #india
+            for (i,x) in enumerate(data_read):
+                #INDIA
+                image = cv2.imread("assets/Newspaper.png", cv2.CV_LOAD_IMAGE_COLOR);
+                image = cv2.resize(image,(25,25), interpolation = cv2.INTER_CUBIC)
+                image = QImage(image, image.shape[1], image.shape[0], 
+                       image.strides[0], QImage.Format_RGB888)
+                newspaperIcon = QLabel()
+                newspaperIcon.setPixmap(QPixmap.fromImage(image))
 
                 if self.source == 'the-times-of-india':
-                    lbl = qlabel(x)
-                    lbl.setfont(font1)
-                    self.fbox.addrow(lbl)
-                    self.heading.settext('india')
+                    lbl = QLabel(x)
+                    lbl.setWordWrap(True)
+                    lbl.setFont(font1)
+                    self.fbox.addRow(newspaperIcon,lbl)
+                    self.heading.setText('HEADLINES')
                     
-                # sports news
+                # Sports News
                 elif self.source == 'fox-sports':
-                    lbl = qlabel(x)
-                    self.fbox.addrow(lbl)
-                    self.heading.settext('sports')
+                    lbl = QLabel(x)
+                    lbl.setWordWrap(True)
+                    self.fbox.addRow(newspaperIcon,lbl)
+                    self.heading.setText('SPORTS NEWS')
                     
-                # tech news
+                # Tech News
                 elif self.source == 'techcrunch':
-                    lbl = qlabel(x)
-                    self.fbox.addrow(lbl)
-                    self.heading.settext('technology')
+                    lbl = QLabel(x)
+                    lbl.setWordWrap(True)
+                    self.fbox.addRow(newspaperIcon,lbl)
+                    self.heading.setText('TECHNOLOGY NEWS')
                    
-                #world
+                #WORLD
                 elif self.source == 'the-telegraph':
-                    lbl = qlabel(x)
-                    self.fbox.addrow(lbl)
-                    self.heading.settext('world')
+                    lbl = QLabel(x)
+                    lbl.setWordWrap(True)
+                    self.fbox.addRow(newspaperIcon,lbl)
+                    self.heading.setText('WORLD NEWS')
                    
-                # business
+                # Business
                 elif self.source == 'business-insider':
-                    lbl = qlabel(x)
-                    self.fbox.addrow(lbl)
-                    self.heading.settext('business')
+                    lbl = QLabel(x)
+                    lbl.setWordWrap(True)
+                    self.fbox.addRow(newspaperIcon,lbl)
+                    self.heading.setText('BUSINESS NEWS')
                     
 
         except IOError:
@@ -522,7 +577,7 @@ class Maps(QWidget):
     def initUI(self):
         self.style = "style=element:geometry%7Ccolor:0x1d2c4d&style=element:labels.text.fill%7Ccolor:0x8ec3b9&style=element:labels.text.stroke%7Ccolor:0x1a3646&style=feature:administrative.country%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:administrative.land_parcel%7Celement:labels.text.fill%7Ccolor:0x64779e&style=feature:administrative.province%7Celement:geometry.stroke%7Ccolor:0x4b6878&style=feature:landscape.man_made%7Celement:geometry.stroke%7Ccolor:0x334e87&style=feature:landscape.natural%7Celement:geometry%7Ccolor:0x023e58&style=feature:poi%7Celement:geometry%7Ccolor:0x283d6a&style=feature:poi%7Celement:labels.text.fill%7Ccolor:0x6f9ba5&style=feature:poi%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:poi.park%7Celement:geometry.fill%7Ccolor:0x023e58&style=feature:poi.park%7Celement:labels.text.fill%7Ccolor:0x3C7680&style=feature:road%7Celement:geometry%7Ccolor:0x304a7d&style=feature:road%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:road%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:road.highway%7Celement:geometry%7Ccolor:0x2c6675&style=feature:road.highway%7Celement:geometry.stroke%7Ccolor:0x255763&style=feature:road.highway%7Celement:labels.text.fill%7Ccolor:0xb0d5ce&style=feature:road.highway%7Celement:labels.text.stroke%7Ccolor:0x023e58&style=feature:transit%7Celement:labels.text.fill%7Ccolor:0x98a5be&style=feature:transit%7Celement:labels.text.stroke%7Ccolor:0x1d2c4d&style=feature:transit.line%7Celement:geometry.fill%7Ccolor:0x283d6a&style=feature:transit.station%7Celement:geometry%7Ccolor:0x3a4762&style=feature:water%7Celement:geometry%7Ccolor:0x0e1626&style=feature:water%7Celement:labels.text.fill%7Ccolor:0x4e6d70"
         self.size = "480x360"
-        print self.zoom
+        #print self.zoom
         #self.zoom = 15
         self.mapLbl=QLabel()
         self.mapLbl.setAlignment(Qt.AlignCenter)
@@ -552,15 +607,16 @@ class Maps(QWidget):
 
                 lat = location_obj['latitude']
                 lon = location_obj['longitude']
+                print ("%.10f,%.10f")%(lat,lon)
 
                 location2 = "%s, %s" % (location_obj['city'], location_obj['region_code'])
 
             
-                self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%d,%d&zoom=%d&format=jpg&maptype=roadmap&%s&size=%s" %(google_map_api,lat,lon,self.zoom,self.style,self.size)
+                self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%f,%f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,lat,lon,self.zoom,self.style,self.size)
         
         else:
             location2 = ""
-            self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%d,%d&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,latitude,longitude,self.zoom,self.style,self.size)
+            self.url = "https://maps.googleapis.com/maps/api/staticmap?key=%s&center=%f,%f&zoom=%d&format=png&maptype=roadmap&%s&size=%s" %(google_map_api,latitude,longitude,self.zoom,self.style,self.size)
         
 
         #print self.url  
@@ -632,12 +688,12 @@ class Message(QWidget):
     def update_check(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_message)
-        self.timer.start(2000)
+        self.timer.start(500)
 
     def update_message(self):
         global current_userfname 
         if current_userfname!=self.fname:
-            self.msgLbl.setText('Welcome %s Have A nice day!' % current_userfname)
+            self.msgLbl.setText('Welcome %s! Have A nice day!' % current_userfname)
 
 class Quotes(QWidget):
     def __init__(self, parent, *args, **kwargs):
@@ -645,32 +701,31 @@ class Quotes(QWidget):
         self.initUI()
 
     def initUI(self):
-        self.hbox = QHBoxLayout()
-        self.lbl = QLabel()
-        self.hbox.addWidget(self.lbl)
-        self.setLayout(self.hbox)
+        self.vbox = QVBoxLayout()
+        self.lbl1 = QLabel()
+        self.lbl1.setWordWrap(True)
+        self.lbl2 = QLabel()
+        self.lbl1.setAlignment(Qt.AlignCenter)
+        self.lbl2.setAlignment(Qt.AlignCenter)
+        self.vbox.setAlignment(Qt.AlignCenter)
+        self.vbox.addWidget(self.lbl1)
+        self.vbox.addWidget(self.lbl2)
+        self.setLayout(self.vbox)
         self.quotes_get()
 
-    # def data_fetch(self,url):
-    #     url = requests.urlopen(url)
-    #     output = url.read().decode('utf-8')
-    #     quotes_obj_req = json.loads(output)
-    #     url.close()
-    #     return quotes_obj_req
-
-    # def data_get(quotes_obj_req):
-    #     quote_value=quotes_obj_req["quoteText"]
-    #     quote_Author = quotes_obj_req["quoteAuthor"]
-    #     print(quote_value)
-    #     print(quote_Author)
         
     def quotes_get(self):
         try:
             url= 'http://api.forismatic.com/api/1.0/?method=getQuote&format=json&lang=en'
             res = requests.get(url)
-            data = json.loads(res.text)
-            self.lbl.setText(data["quoteText"])
-            print data
+            # print res
+            s = res.text
+            s.replace('\r\n', '')
+            s.replace("\'", "'")
+            data = json.loads(s)
+            self.lbl1.setText(data["quoteText"])
+            self.lbl2.setText("- " + data["quoteAuthor"])
+            # print data
             #print self.data_get(self.data_fetch(url))
         except IOError:
             print('no internet')
@@ -693,14 +748,20 @@ class DynamicFrame(QWidget):
         self.update_check()
         # self.map = Maps(15)
         # self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-        # self.vbox.addWidget(self.map)       
+        # self.vbox.addWidget(self.map)
+        self.news = News('the-times-of-india') 
+        self.news.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        self.vbox.addWidget(self.news)
+        # self.cal = Calendar(QWidget())
+        # self.cal.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+        # self.vbox.addWidget(self.cal)       
 
 
     
     def update_check(self):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_dynamic_frame)
-        self.timer.start(2000)
+        self.timer.start(500)
 
 
     def update_dynamic_frame(self):
@@ -728,7 +789,6 @@ class DynamicFrame(QWidget):
                 self.cal = Calendar(QWidget())
                 self.cal.setFixedSize(dynamic_frame_w,dynamic_frame_h)
                 self.vbox.addWidget(self.cal)
-
             if any(x in recognised_speech for x in self.news_keys):
                 print "showing news"
                 for i in reversed(range(self.vbox.count())): 
@@ -740,10 +800,10 @@ class DynamicFrame(QWidget):
                 elif "business" in recognised_speech or "bizness" in recognised_speech:
                     self.news = News('business-insider')
 
-                elif "sport" in recognised_speech or "spot" in recognised_speech:
+                elif "sport" in recognised_speech or "spot" in recognised_speech or "sports" in recognised_speech:
                     self.news = News('fox-sports')
 
-                elif "world" in recognised_speech:
+                elif "world" in recognised_speech or "word" in recognised_speech:
                     self.news = News('the-telegraph')
 
                 else:
@@ -754,18 +814,13 @@ class DynamicFrame(QWidget):
 
 
 
-
-
-
-       
-    
-
-
 class FullscreenWindow:
 
     def __init__(self, parent, *args, **kwargs):
         self.qt = QWidget()
-        self.qt.resize(window_width, window_height)
+        self.qt.showFullScreen()
+        # self.qt.resize(window_width, window_height)
+
         self.pal=QPalette()
         self.pal.setColor(QPalette.Background,Qt.black)
         self.pal.setColor(QPalette.Foreground,Qt.white)
@@ -774,9 +829,7 @@ class FullscreenWindow:
 
         self.qt.hbox1 = QHBoxLayout()
         self.qt.clock = Clock(QWidget())
-        #self.qt.clock.setFrameShape(QFrame.StyledPanel)
         self.qt.weather = Weather(QWidget())
-        #self.qt.weather.setFrameShape(QFrame.StyledPanel)
         self.qt.clock.setFixedHeight(150)
         self.qt.weather.setFixedHeight(150)
 
@@ -787,18 +840,16 @@ class FullscreenWindow:
 
         # for stocks
         self.qt.hbox2 = QHBoxLayout()
-        self.qt.Stocksframe = QFrame()
-        self.qt.Stocksframe.setFrameShape(QFrame.StyledPanel)
-        self.qt.stocks = Stocks(self.qt.Stocksframe)
+        self.qt.stocks = Stocks(QWidget())
+        self.qt.stocks.setFixedWidth(200)
         self.qt.hbox2.addStretch(2)
         self.qt.hbox2.addWidget(self.qt.stocks)
 
         # for calender event
         self.qt.hbox3 = QHBoxLayout()
-        self.qt.Eventframe = QFrame()
-        self.qt.events = Events(self.qt.Eventframe)
-        self.qt.Eventframe.setFrameShape(QFrame.StyledPanel)
         self.qt.hbox3.addStretch(2)
+        self.qt.events = Events(QWidget())
+        self.qt.events.setFixedWidth(200)
         self.qt.hbox3.addWidget(self.qt.events)
 
         #dynamic area
@@ -814,8 +865,6 @@ class FullscreenWindow:
 
         # quotes area
         self.qt.hbox6 = QHBoxLayout()
-        self.qt.Quotesframe = QFrame()
-        # self.qt.Quotesframe.setFrameShape(QFrame.StyledPanel)
         self.qt.quotes = Quotes(QWidget())
         self.qt.hbox6.addWidget(self.qt.quotes)
 
@@ -824,13 +873,17 @@ class FullscreenWindow:
         self.qt.vbox.addLayout(self.qt.hbox1)
         self.qt.vbox.addLayout(self.qt.hbox2)
         self.qt.vbox.addLayout(self.qt.hbox3)
+        self.qt.vbox.addStretch(2)
         self.qt.vbox.addLayout(self.qt.hbox4)
+        
         self.qt.vbox.addLayout(self.qt.hbox5)
         self.qt.vbox.addLayout(self.qt.hbox6)
 
         self.qt.setLayout(self.qt.vbox)
-        self.qt.show()
-      
+        
+        # self.qt.setWindowState(Qt.WindowMaximized)
+        # self.qt.showMaximized()
+
 
 
 def start_qt(tmp):
@@ -851,11 +904,12 @@ def face_identify(tmp):
     cascPath = 'haarcascade_frontalface_default.xml'
     faceCascade = cv2.CascadeClassifier(cascPath)
     
-    ramp_frames = 50
-    cam = cv2.VideoCapture(camera_port) 
+    ramp_frames = 10
+    
     print "Face identification started .........."
-
+    cam = cv2.VideoCapture(camera_port) 
     try:
+        
         while True:
             for i in xrange(ramp_frames):
                 s, im = cam.read()   
@@ -867,7 +921,7 @@ def face_identify(tmp):
                 gray,
                 scaleFactor=1.1,
                 minNeighbors=5,
-                minSize=(120, 120),
+                minSize=(100, 100),
                 flags=cv2.cv.CV_HAAR_SCALE_IMAGE
             )
             
@@ -886,22 +940,25 @@ def face_identify(tmp):
                     mw = w
                     max_area=w*h
 
-            cv2.imshow('Video', image)        
-            image_crop = image[my:my+mh,mx:mx+mw]
-            file_name = id_generator()+'.jpg'
-            file = os.path.join(tmp_path,file_name)
-            cloudinary_url=cloudinary_tmp + '/' + file_name        
-            cv2.imwrite(file, image_crop)
-            imup.upload_image(file,file_name)
+            #cv2.imshow('Video', image)
+            if max_area>=15000:        
+                image_crop = image[my:my+mh,mx:mx+mw]
+                file_name = id_generator()+'.jpg'
+                file = os.path.join(tmp_path,file_name)
+                cloudinary_url=cloudinary_tmp + '/' + file_name        
+                cv2.imwrite(file, image_crop)
+                imup.upload_image(file,file_name)
+                
+                faceid=msface.face_detect(cloudinary_url)
+                
+                print "faceId = " + str(faceid)
+                detected_personid = msface.face_identify(faceid)
+                print "detected_personid = " + str(detected_personid)
             
-            faceid=msface.face_detect(cloudinary_url)
-            
-            print "faceId = " + str(faceid)
-            detected_personid = msface.face_identify(faceid)
-            print "detected_personid = " + str(detected_personid)
-            
+            else:
+                continue    
 
-            
+                
             if detected_personid:
                 comm = "SELECT * FROM users WHERE personid = '%s'" % detected_personid
                 res = cursor.execute(comm)
@@ -911,28 +968,29 @@ def face_identify(tmp):
                     current_userfname = res[2]
                     fname = res[2]
                     print "Welcome %s !" % fname
+                    return
 
                 else:
                     print "person id not found in database"
 
-                break 
             
             else:
                 print "Unknown person found"
-                           
+                                   
     except Exception as e:
         print "Errors occured !"
-        print e
+        print e    
 
     cam.release()
     cv2.destroyAllWindows() 
-    
+
 
 
 
 def start_speech_recording(tmp): 
 # Record Audio
-    global recognised_speech 
+    global recognised_speech
+    BING_KEY = "cfee7d6db79d4671b9cea936da4689d7" 
     while True:
         r = sr.Recognizer()
         with sr.Microphone() as source:
@@ -941,14 +999,14 @@ def start_speech_recording(tmp):
             audio = r.listen(source)
         
         try:
-            recognised_speech = r.recognize_google(audio)
-            print("You said: " + r.recognize_google(audio))
-            # if "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech:
-            #     thread.start_new_thread( face_identify, (3, ) )       
+            recognised_speech = r.recognize_bing(audio, key=BING_KEY).lower()
+            print("Microsoft Bing Voice Recognition thinks you said:" + recognised_speech)
+            if "hallo" in recognised_speech or "wakeup" in recognised_speech or "start" in recognised_speech or "makeup" in recognised_speech or "star" in recognised_speech or "breakup" in recognised_speech:
+                thread.start_new_thread( face_identify, (3, ) )       
         except sr.UnknownValueError:
-            print("Google Speech Recognition could not understand audio")
+            print("Microsoft Bing Voice Recognition could not understand audio")
         except sr.RequestError as e:
-            print("Could not request results from Google Speech Recognition service; {0}".format(e))
+            print("Could not request results from Microsoft Bing Voice Recognition service; {0}".format(e))
 
 
 
@@ -960,7 +1018,7 @@ if __name__ == '__main__':
         
         thread.start_new_thread( start_qt, (1, ) )
         thread.start_new_thread( start_speech_recording, (2, ) )
-        #thread.start_new_thread( face_identify, (3, ) )
+        thread.start_new_thread( face_identify, (3, ) )
 
         
 
