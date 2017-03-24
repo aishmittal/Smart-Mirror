@@ -71,6 +71,9 @@ The current implementation is prone to disturbances like noise from surrounding 
 * The mirror acts like a personal assistant where it has control over all the devices at our house and women who spend most of the time in front of mirror can get their work done by giving voice commands.
 * By adding touchscreen facility it improves user experience.
 
+## Final Product
+![Our Smart Mirror](/image/img3.jpg "Smart Mirror") 
+
 
 
 
