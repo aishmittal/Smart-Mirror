@@ -1,10 +1,10 @@
 # Smart-Mirror
 
 
-[![platform](https://img.shields.io/badge/python-2.7-green.svg)
-[![platform](https://img.shields.io/badge/dependencies-up--to--date-blue.svg)
-[![platform](https://img.shields.io/badge/license-MIT%20License-blue.svg)
-[![platform](https://img.shields.io/badge/project%20category-iot-brightgreen.svg)
+![platform](https://img.shields.io/badge/python-2.7-green.svg)
+![platform](https://img.shields.io/badge/dependencies-up--to--date-blue.svg)
+![platform](https://img.shields.io/badge/license-MIT%20License-blue.svg)
+![platform](https://img.shields.io/badge/project%20category-iot-brightgreen.svg)
 
 A smart mirror is basically a mirror with a screen behind it. That screen can be an Android tablet or a computer monitor. The mirror is a two way glass which is partially reflective and partially transparent.When one side of the mirror is brightly lit and the other is dark, it allows viewing from the darkened side and the people on the bright end side see their own reflection.
 It can be powered by many devices such as a raspberry pi, your own unused laptop etc.It reduces the wastage of time where people getting ready for their office or for some other occasion who spent large time in front of mirror can do fruitful work such as getting to know today stocks prices, what kind of weather is going to be today, and Headlines of various kinds of news from different sources.
