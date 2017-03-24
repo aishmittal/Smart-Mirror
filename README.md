@@ -74,6 +74,9 @@ The current implementation is prone to disturbances like noise from surrounding 
 ## Final Product
 ![Our Smart Mirror](/image/img1-small.jpg "Smart Mirror") 
 
+## Video
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/i0phxXGM5wE/0.jpg)](https://www.youtube.com/watch?v=i0phxXGM5wE)
+
 
 
 
