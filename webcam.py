@@ -4,7 +4,7 @@ import sys
 cascPath = 'haarcascade_frontalface_default.xml'
 faceCascade = cv2.CascadeClassifier(cascPath)
 
-video_capture = cv2.VideoCapture(1)
+video_capture = cv2.VideoCapture(2)
 thersold=18000
 
 while True:

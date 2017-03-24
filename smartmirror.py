@@ -737,6 +737,7 @@ class DynamicFrame(QWidget):
         super(DynamicFrame, self).__init__()
         self.initUI()
         self.prev_recorded_speech = ''
+        self.zoom=15
         self.map_keys = ["maps","maths"]
         self.cal_keys = ["calendar","calender"]
         self.news_keys = ["news","muse","tech","sports","business","india","world","nude"]
@@ -772,14 +773,15 @@ class DynamicFrame(QWidget):
             
             self.prev_recorded_speech = recognised_speech
 
-            if "maps" in recognised_speech or "maths" in recognised_speech:
+            if "maps" in recognised_speech or "maths" in recognised_speech or "map" in recognised_speech:
                 print "showing map"
+                self.zoom = 15
                 for i in reversed(range(self.vbox.count())): 
                     self.vbox.itemAt(i).widget().setParent(None)
                 
-                self.map = Maps(15)
+                self.map = Maps(self.zoom)
                 self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-                self.vbox.addWidget(self.map)            
+                self.vbox.addWidget(self.map)
 
             if "calendar" in recognised_speech or "calender" in recognised_speech:
                 print "showing calender"
@@ -900,7 +902,7 @@ def face_identify(tmp):
     global current_userfname
 
     detected_personid = ''
-    camera_port = 1
+    camera_port = 2
     cascPath = 'haarcascade_frontalface_default.xml'
     faceCascade = cv2.CascadeClassifier(cascPath)
     

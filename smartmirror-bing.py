@@ -461,7 +461,7 @@ class News(QWidget):
           self.source = source
         else:
           # self.source = 'the-times-of-india'      
-          self.source = 'the-telegraph'      
+          self.source = 'the-times-of-india'      
       
         self.initUI()
 
@@ -737,6 +737,7 @@ class DynamicFrame(QWidget):
         super(DynamicFrame, self).__init__()
         self.initUI()
         self.prev_recorded_speech = ''
+        self.zoom = 15
         self.map_keys = ["maps","maths"]
         self.cal_keys = ["calendar","calender"]
         self.news_keys = ["news","muse","tech","sports","business","india","world","nude"]
@@ -772,14 +773,40 @@ class DynamicFrame(QWidget):
             
             self.prev_recorded_speech = recognised_speech
 
-            if "maps" in recognised_speech or "maths" in recognised_speech:
+            if "maps" in recognised_speech or "maths" in recognised_speech or "map" in recognised_speech:
                 print "showing map"
+                self.zoom = 15
                 for i in reversed(range(self.vbox.count())): 
                     self.vbox.itemAt(i).widget().setParent(None)
                 
-                self.map = Maps(15)
+                self.map = Maps(self.zoom)
                 self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
-                self.vbox.addWidget(self.map)            
+                self.vbox.addWidget(self.map)
+
+            if "zoom in" in recognised_speech or "in" in recognised_speech:
+                self.zoom = self.zoom + 1
+                print "zooming in"
+                if hasattr(self, 'map'):
+                    if self.map.parent():
+                        for i in reversed(range(self.vbox.count())): 
+                            self.vbox.itemAt(i).widget().setParent(None)
+                        
+                        self.map = Maps(self.zoom)
+                        self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+                        self.vbox.addWidget(self.map)
+
+            if "zoom out" in recognised_speech or "out" in recognised_speech:
+                self.zoom = self.zoom - 1
+                print "zooming out"
+                if hasattr(self, 'map'):
+                    if self.map.parent():
+                        for i in reversed(range(self.vbox.count())): 
+                            self.vbox.itemAt(i).widget().setParent(None)
+                        
+                        self.map = Maps(self.zoom)
+                        self.map.setFixedSize(dynamic_frame_w,dynamic_frame_h)
+                        self.vbox.addWidget(self.map)
+                               
 
             if "calendar" in recognised_speech or "calender" in recognised_speech:
                 print "showing calender"
