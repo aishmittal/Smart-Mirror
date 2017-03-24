@@ -21,18 +21,14 @@ It can be powered by many devices such as a raspberry pi, your own unused laptop
 ### Registration
 1. Every User First Registers himself with **register.py** application where he would provide his username, password, firstname , lastname, dob and email. then a new user is created if username exist. 
 2. After new user is created face dataset of user is generated and face identification model is built using microsoft face APIs
-3. Then he would provide details of the various stocks that he would like to view on a daily basis.
-4. Next, he would Enter the events that would displayed on that particular day.
+3. user could provide details of the various stocks that he would like to view on a daily basis in add stocks tab.
+4. user could enter the events that would displayed on that particular day in add events tab.
 
-## Running application
-1. Once the application is started it would try to identify the user who is currently using the mirror by using a webcam placed at the top of the mirror.
+### Running application
+1. smarmirror application can be started by runnig **smartmirror.py**. on starting it would try to identify the user who is currently using the mirror by using a webcam placed at the top of the mirror.
 2. Then that person would be logged in and would display his list of stocks and events today along with their time.
-3. Next, he can give voice commands for different information to be displayed at the bottom of the screen such as Sports news, Tech News etc as mentioned in the features.
+3. User can give voice commands for different information to be displayed at the bottom of the screen such as Sports news, Tech News etc as mentioned in the features.
 4. A quote would be displayed at the bottom along with weather at top left so that there is space provided in the middle which would help the person to see his reflection on the mirror along with the text.
-
-
-
-
 
 ## Project Setup
 currently the project is in Python2.7 but you can use Python3 as per your choice. Install required python packages accordingly.
@@ -74,6 +70,8 @@ The current implementation is prone to disturbances like noise from surrounding 
 ### Following things can be implemented in the near future :-
 * The mirror acts like a personal assistant where it has control over all the devices at our house and women who spend most of the time in front of mirror can get their work done by giving voice commands.
 * By adding touchscreen facility it improves user experience.
+
+
 
 
 
