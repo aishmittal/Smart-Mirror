@@ -77,6 +77,10 @@ The current implementation is prone to disturbances like noise from surrounding 
 ## Video
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/i0phxXGM5wE/0.jpg)](https://www.youtube.com/watch?v=i0phxXGM5wE)
 
+## Thanks
+©[MIT License](https://github.com/ARIES-IIT-R/Smart-Mirror/blob/master/LICENSE)
+
+
 
 
 
