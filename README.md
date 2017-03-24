@@ -72,7 +72,7 @@ The current implementation is prone to disturbances like noise from surrounding 
 * By adding touchscreen facility it improves user experience.
 
 ## Final Product
-![Our Smart Mirror](/image/img3.jpg "Smart Mirror") 
+![Our Smart Mirror](/image/img1-small.jpg "Smart Mirror") 
 
 
 
