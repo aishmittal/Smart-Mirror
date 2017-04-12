@@ -52,7 +52,7 @@ currently the project is in Python2.7 but you can use Python3 as per your choice
 
 
 ### Clone
-`git clone https://github.com/ARIES-IIT-R/Smart-Mirror.git`
+`git clone https://github.com/aishmittal/Smart-Mirror.git`
 
 **After clonning add following folders in root**
 
