@@ -2,7 +2,6 @@
 
 
 ![platform](https://img.shields.io/badge/python-2.7-green.svg)
-![platform](https://img.shields.io/badge/dependencies-up--to--date-blue.svg)
 ![platform](https://img.shields.io/badge/license-MIT%20License-blue.svg)
 ![platform](https://img.shields.io/badge/project%20category-iot-brightgreen.svg)
 
@@ -32,13 +31,13 @@ It can be powered by many devices such as a raspberry pi, your own unused laptop
 4. user could enter the events that would displayed on that particular day in add events tab.
 
 ### Running application
-1. smarmirror application can be started by runnig **smartmirror.py**. on starting it would try to identify the user who is currently using the mirror by using a webcam placed at the top of the mirror.
+1. smartmirror application can be started by runnig **smartmirror.py**. on starting it would try to identify the user who is currently using the mirror by using a webcam placed at the top of the mirror.
 2. Then that person would be logged in and would display his list of stocks and events today along with their time.
 3. User can give voice commands for different information to be displayed at the bottom of the screen such as Sports news, Tech News etc as mentioned in the features.
 4. A quote would be displayed at the bottom along with weather at top left so that there is space provided in the middle which would help the person to see his reflection on the mirror along with the text.
 
 ## Project Setup
-currently the project is in Python2.7 but you can use Python3 as per your choice. Install required python packages accordingly.
+Currently the project is in Python2.7 but you can use Python3 as per your choice. Install required python packages accordingly.
 
 ### Required python packages
 1.  opencv2
@@ -54,7 +53,7 @@ currently the project is in Python2.7 but you can use Python3 as per your choice
 ### Clone
 `git clone https://github.com/aishmittal/Smart-Mirror.git`
 
-**After clonning add following folders in root**
+**After cloning add following folders in root**
 
 1.  dataset
 2.  tmp
@@ -85,7 +84,7 @@ The current implementation is prone to disturbances like noise from surrounding 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/i0phxXGM5wE/0.jpg)](https://www.youtube.com/watch?v=i0phxXGM5wE)
 
 ## Thanks
-Feel free to post issues if you find any problem or contact me [Aishwarya Mittal](https://www.facebook.com/aishwrymittal)<br>
+Feel free to post issues if you find any problem or contact me [Aishwarya Mittal](https://www.facebook.com/aishhmittal)<br>
 ©[MIT License](https://github.com/ARIES-IIT-R/Smart-Mirror/blob/master/LICENSE)
 
 
